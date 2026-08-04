@@ -77,7 +77,7 @@
   /* top strip: JOBS + date + Days/Dumpster/Camera/Sign/Unavail headers */
   #wbTop{
     display:grid;
-    grid-template-columns: 190px 1fr 70px 90px 90px 70px 260px;
+    grid-template-columns: 190px 1fr 140px 90px 90px 90px 260px;
     border-bottom:3px solid var(--wb-line);
   }
   #wbTop > div{
@@ -95,7 +95,7 @@
   /* main body: left job rows, right side panel */
   #wbMain{
     display:grid;
-    grid-template-columns: 190px 1fr 70px 90px 90px 70px 260px;
+    grid-template-columns: 190px 1fr 140px 90px 90px 90px 260px;
   }
   .jobRow{
     display:contents;
@@ -122,7 +122,7 @@
   .thinCell{ }
 
   #wbSide{
-    grid-row: 2 / span 8;
+    grid-row: 1 / span 8;
     grid-column: 7;
     display:flex;
     flex-direction:column;
@@ -182,26 +182,19 @@
   }
   #legendTrucks{
     display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:10px;
+    grid-template-columns: 1.3fr 1fr 1fr;
   }
-  #legendTrucks .box{ position:relative; min-height:220px; display:flex; flex-direction:column; }
-  #legendTrucks h3{ font-size:14px; text-transform:uppercase; color:#333; font-family:-apple-system,sans-serif; font-weight:700; margin:0 0 6px 0; }
-  #rightStack{ display:flex; flex-direction:column; gap:8px; height:100%; }
-  #panelTrucks{ flex:1; min-height:60px !important; }
-  #vacaBox{
-    flex:1;
-    border:2px solid var(--wb-red);
-    border-radius:6px;
-    padding:6px 8px;
-    min-height:60px;
+  #legendTrucks .box{
     position:relative;
+    min-height:220px;
     display:flex;
     flex-direction:column;
+    padding:10px;
+    border-right:2px solid var(--wb-line);
   }
-  #vacaBox h3{ color:var(--wb-red); font-size:13px; }
-  #panelSpare{ flex:1; min-height:60px !important; }
-  #panelSpare h3{ visibility:hidden; }
+  #legendTrucks .box:last-child{ border-right:none; }
+  #legendTrucks h3{ font-size:14px; text-transform:uppercase; color:#333; font-family:-apple-system,sans-serif; font-weight:700; margin:0 0 6px 0; }
+  #vacaBox h3{ color:var(--wb-red); }
 
   /* ---------- CARDS (free-floating layer over whole whiteboard) ---------- */
   #cardLayer{
@@ -450,7 +443,7 @@
       <div id="wbMain">
         <!-- job rows injected by JS -->
         <div id="wbSide">
-          <div class="sidePanel" id="panelUnavail"><h3>Unavailable / Maintenance</h3><div class="lane"></div></div>
+          <div class="sidePanel" id="panelUnavail"><div class="lane"></div></div>
           <div class="sideRow">
             <div class="sidePanel" id="panelEquipment"><h3>Equipment</h3><div class="lane"></div></div>
             <div class="sidePanel" id="panelTrailers"><h3>Trailers</h3><div class="lane"></div></div>
@@ -466,11 +459,8 @@
         </div>
         <div id="legendTrucks">
           <div class="box" id="panelLegend"><h3>Dumpster, Sign, Camera</h3><div class="lane"></div></div>
-          <div id="rightStack">
-            <div class="box" id="panelTrucks"><h3>Trucks</h3><div class="lane"></div></div>
-            <div id="vacaBox"><h3>VACA, SICK, OUT, ETC.</h3><div class="lane"></div></div>
-            <div class="box" id="panelSpare"><h3>Spare</h3><div class="lane"></div></div>
-          </div>
+          <div class="box" id="panelTrucks"><h3>Trucks</h3><div class="lane"></div></div>
+          <div class="box" id="vacaBox"><h3>VACA, SICK, OUT, ETC.</h3><div class="lane"></div></div>
         </div>
       </div>
 
@@ -641,7 +631,6 @@
   laneEls["legend"] = document.querySelector("#panelLegend .lane");
   laneEls["trucks"] = document.querySelector("#panelTrucks .lane");
   laneEls["vaca"] = document.querySelector("#vacaBox .lane");
-  laneEls["spare"] = document.querySelector("#panelSpare .lane");
 
   // orders sub-grid (decorative, matches the ruled empty grid under Orders)
   var ordersGrid = document.getElementById("ordersGrid");
