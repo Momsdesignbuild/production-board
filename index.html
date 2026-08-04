@@ -994,30 +994,72 @@
     else{ document.documentElement.requestFullscreen().catch(function(){}); }
   });
 
-  // ---- persistence ----
+  // ---- persistence: Supabase is the shared source of truth; localStorage is just an offline fallback ----
   var STORE_KEY = "mdb_production_board_v3";
+  var applyingRemote = false;
+  var lastPushedJSON = null;
+
+  function currentStateObj(){
+    var cards = Array.prototype.map.call(cardLayer.querySelectorAll(".card"), function(el){
+      return { label: el.dataset.label, x: el.style.left, y: el.style.top, type: el.dataset.type, photo: el.dataset.photo||null };
+    });
+    return { cards: cards, drawing: drawCanvas.toDataURL() };
+  }
+
+  function renderState(state){
+    cardLayer.innerHTML = "";
+    (state.cards||[]).forEach(function(c){
+      makeCard(c.label, parseInt(c.x,10)||40, parseInt(c.y,10)||90, null, c.photo, c.type);
+    });
+    dctx.clearRect(0,0,drawCanvas.width, drawCanvas.height);
+    if(state.drawing){
+      var img=new Image();
+      img.onload=function(){ dctx.drawImage(img,0,0); };
+      img.src=state.drawing;
+    }
+  }
+
   function saveState(){
     try{
-      var cards = Array.prototype.map.call(cardLayer.querySelectorAll(".card"), function(el){
-        return { label: el.dataset.label, x: el.style.left, y: el.style.top, type: el.dataset.type, photo: el.dataset.photo||null };
-      });
-      localStorage.setItem(STORE_KEY, JSON.stringify({ cards: cards, drawing: drawCanvas.toDataURL() }));
+      var state = currentStateObj();
+      var json = JSON.stringify(state);
+      localStorage.setItem(STORE_KEY, json);
+      if(applyingRemote) return;
+      lastPushedJSON = json;
+      sb.from("board_state").update({ data: state, updated_at: new Date().toISOString() }).eq("id", 1).then(function(){});
     }catch(e){}
   }
+
   function loadState(){
-    try{
-      var raw = localStorage.getItem(STORE_KEY);
-      if(!raw){ seedDefaults(); return; }
-      var state = JSON.parse(raw);
-      if(!state.cards || !state.cards.length){ seedDefaults(); return; }
-      state.cards.forEach(function(c){ makeCard(c.label, parseInt(c.x,10)||40, parseInt(c.y,10)||90, null, c.photo, c.type); });
-      if(state.drawing){
-        var img=new Image();
-        img.onload=function(){ dctx.drawImage(img,0,0); };
-        img.src=state.drawing;
+    sb.from("board_state").select("data").eq("id",1).single().then(function(res){
+      if(res.data && res.data.data && res.data.data.cards && res.data.data.cards.length){
+        applyingRemote = true;
+        renderState(res.data.data);
+        applyingRemote = false;
+      } else {
+        seedDefaults();
       }
-    }catch(e){ seedDefaults(); }
+      subscribeRealtime();
+    }).catch(function(){
+      try{
+        var raw = localStorage.getItem(STORE_KEY);
+        if(raw){ renderState(JSON.parse(raw)); } else { seedDefaults(); }
+      }catch(e){ seedDefaults(); }
+    });
   }
+
+  function subscribeRealtime(){
+    sb.channel("board_state_changes")
+      .on("postgres_changes", { event:"UPDATE", schema:"public", table:"board_state" }, function(payload){
+        var incoming = JSON.stringify(payload.new.data);
+        if(incoming === lastPushedJSON) return;
+        applyingRemote = true;
+        renderState(payload.new.data);
+        applyingRemote = false;
+      })
+      .subscribe();
+  }
+
   setTimeout(loadState, 150);
 
 })();
