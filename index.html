@@ -448,7 +448,7 @@
       <div id="wbBottom">
         <div id="ordersPanel">
           <h3>ORDERS</h3>
-          <div class="orderLine" id="orderLine" contenteditable="false">460 yds Soil — Wednesday A.M.</div>
+          <div class="orderLine" id="orderLine"></div>
           <div id="ordersGrid"></div>
         </div>
         <div id="legendTrucks">
@@ -488,7 +488,12 @@
         <label id="penWidthLabel">Width 4</label>
         <input type="range" id="penWidth" min="1" max="16" value="4">
       </div>
-      <button id="clearDraw">Clear Drawing</button>
+      <button id="eraserToggle">🧽 Eraser</button>
+      <div class="row">
+        <label id="eraserWidthLabel">Size 26</label>
+        <input type="range" id="eraserWidth" min="10" max="60" value="26">
+      </div>
+      <button id="clearDraw">Clear ALL Drawing</button>
 
       <h2>Board</h2>
       <button id="clearCards">Clear All Cards</button>
@@ -498,6 +503,15 @@
     </div>
   </div>
 
+</div>
+
+<div class="modalOverlay show" id="fsPrompt">
+  <div class="modal" style="cursor:pointer;" id="fsPromptInner">
+    <h3>⛶ Enter Full Screen</h3>
+    <div class="hint" style="margin-bottom:16px;">Hides the address bar and tabs — best for the TV.<br>Tap anywhere here to start.</div>
+    <button class="primary" id="fsPromptBtn">Enter Full Screen</button>
+    <button id="fsPromptSkip">Skip for now</button>
+  </div>
 </div>
 
 <button id="devModeBtn">Developer Mode</button>
@@ -580,7 +594,6 @@
 
   // ---- build job rows ----
   var laneEls = {}; // key -> lane element
-  var jobNameInputs = [];
   JOB_ROWS.forEach(function(job, idx){
     var row = document.createElement("div");
     row.className = "jobRow";
@@ -588,14 +601,7 @@
     var nameCell = document.createElement("div");
     nameCell.className = "jobNameCell";
     nameCell.dataset.color = job.color;
-    var inp = document.createElement("input");
-    inp.value = job.name;
-    inp.placeholder = "Job name";
-    inp.readOnly = true;
-    inp.addEventListener("change", saveState);
-    nameCell.appendChild(inp);
     row.appendChild(nameCell);
-    jobNameInputs.push(inp);
 
     var lane = document.createElement("div");
     lane.className = "laneCell";
@@ -779,7 +785,6 @@
     document.body.classList.toggle("unlocked", v);
     document.getElementById("editTools").style.display = v ? "block" : "none";
     document.getElementById("viewOnlyNotice").style.display = v ? "none" : "block";
-    jobNameInputs.forEach(function(inp){ inp.readOnly = !v; });
     if(v){ try{ localStorage.setItem(UNLOCK_KEY,"1"); }catch(e){} }
   }
   document.getElementById("forgetDevice").addEventListener("click", function(){
@@ -933,17 +938,17 @@
       dragging=true;
       el.setPointerCapture(e.pointerId);
       var r = cardLayer.getBoundingClientRect();
-      offX = e.clientX - r.left - el.offsetLeft;
-      offY = e.clientY - r.top - el.offsetTop;
+      offX = (e.clientX - r.left)/zoomScale - el.offsetLeft;
+      offY = (e.clientY - r.top)/zoomScale - el.offsetTop;
       el.style.cursor="grabbing";
     });
     el.addEventListener("pointermove", function(e){
       if(!dragging) return;
       var r = cardLayer.getBoundingClientRect();
-      var nx = e.clientX - r.left - offX;
-      var ny = e.clientY - r.top - offY;
-      nx = Math.max(0, Math.min(nx, r.width-el.offsetWidth));
-      ny = Math.max(0, Math.min(ny, r.height-el.offsetHeight));
+      var nx = (e.clientX - r.left)/zoomScale - offX;
+      var ny = (e.clientY - r.top)/zoomScale - offY;
+      nx = Math.max(0, Math.min(nx, r.width/zoomScale-el.offsetWidth));
+      ny = Math.max(0, Math.min(ny, r.height/zoomScale-el.offsetHeight));
       el.style.left = nx+"px"; el.style.top = ny+"px";
     });
     function endDrag(){ if(!dragging) return; dragging=false; el.style.cursor="grab"; saveState(); }
@@ -1041,45 +1046,85 @@
     seedDefaults();
   });
 
-  // ---- pen / draw ----
-  var drawMode=false;
+  // ---- pen / draw / erase ----
+  var drawMode=false, eraseMode=false;
   var penBtn=document.getElementById("penToggle");
+  var eraserBtn=document.getElementById("eraserToggle");
   var penWidth=document.getElementById("penWidth");
   var penWidthLabel=document.getElementById("penWidthLabel");
+  var eraserWidth=document.getElementById("eraserWidth");
+  var eraserWidthLabel=document.getElementById("eraserWidthLabel");
   penWidth.addEventListener("input", function(){ penWidthLabel.textContent="Width "+penWidth.value; });
-  penBtn.addEventListener("click", function(){
-    if(!unlocked) return;
-    drawMode=!drawMode;
+  eraserWidth.addEventListener("input", function(){ eraserWidthLabel.textContent="Size "+eraserWidth.value; });
+
+  function setDrawMode(v){
+    drawMode = v;
+    if(v) eraseMode = false;
     penBtn.classList.toggle("active", drawMode);
-    drawCanvas.style.pointerEvents = drawMode ? "auto":"none";
-    cardLayer.style.pointerEvents = drawMode ? "none":"auto";
-  });
+    eraserBtn.classList.toggle("active", eraseMode);
+    var active = drawMode || eraseMode;
+    drawCanvas.style.pointerEvents = active ? "auto":"none";
+    cardLayer.style.pointerEvents = active ? "none":"auto";
+  }
+  function setEraseMode(v){
+    eraseMode = v;
+    if(v) drawMode = false;
+    penBtn.classList.toggle("active", drawMode);
+    eraserBtn.classList.toggle("active", eraseMode);
+    var active = drawMode || eraseMode;
+    drawCanvas.style.pointerEvents = active ? "auto":"none";
+    cardLayer.style.pointerEvents = active ? "none":"auto";
+  }
+  penBtn.addEventListener("click", function(){ if(!unlocked) return; setDrawMode(!drawMode); });
+  eraserBtn.addEventListener("click", function(){ if(!unlocked) return; setEraseMode(!eraseMode); });
   drawCanvas.style.pointerEvents="none";
   var drawing=false;
   drawCanvas.addEventListener("pointerdown", function(e){
-    if(!drawMode||!unlocked) return;
+    if((!drawMode && !eraseMode)||!unlocked) return;
     drawing=true;
     drawCanvas.setPointerCapture(e.pointerId);
     var r=drawCanvas.getBoundingClientRect();
-    dctx.beginPath(); dctx.moveTo(e.clientX-r.left, e.clientY-r.top);
-    dctx.strokeStyle=currentColor; dctx.lineWidth=parseInt(penWidth.value,10);
+    dctx.beginPath(); dctx.moveTo((e.clientX-r.left)/zoomScale, (e.clientY-r.top)/zoomScale);
+    if(eraseMode){
+      dctx.globalCompositeOperation = "destination-out";
+      dctx.lineWidth = parseInt(eraserWidth.value,10);
+    } else {
+      dctx.globalCompositeOperation = "source-over";
+      dctx.strokeStyle=currentColor; dctx.lineWidth=parseInt(penWidth.value,10);
+    }
   });
   drawCanvas.addEventListener("pointermove", function(e){
     if(!drawing) return;
     var r=drawCanvas.getBoundingClientRect();
-    dctx.lineTo(e.clientX-r.left, e.clientY-r.top); dctx.stroke();
+    dctx.lineTo((e.clientX-r.left)/zoomScale, (e.clientY-r.top)/zoomScale); dctx.stroke();
   });
-  function endStroke(){ if(drawing){ drawing=false; saveState(); } }
+  function endStroke(){ if(drawing){ drawing=false; dctx.globalCompositeOperation="source-over"; saveState(); } }
   drawCanvas.addEventListener("pointerup", endStroke);
   drawCanvas.addEventListener("pointercancel", endStroke);
   document.getElementById("clearDraw").addEventListener("click", function(){
     if(!unlocked) return;
+    if(!window.confirm("Clear ALL hand-drawing on the whole board?")) return;
     dctx.clearRect(0,0,drawCanvas.width, drawCanvas.height); saveState();
   });
 
   document.getElementById("fsBtn").addEventListener("click", function(){
     if(document.fullscreenElement){ document.exitFullscreen(); }
     else{ document.documentElement.requestFullscreen().catch(function(){}); }
+  });
+
+  var fsPrompt = document.getElementById("fsPrompt");
+  document.getElementById("fsPromptBtn").addEventListener("click", function(ev){
+    ev.stopPropagation();
+    document.documentElement.requestFullscreen().catch(function(){});
+    fsPrompt.classList.remove("show");
+  });
+  document.getElementById("fsPromptSkip").addEventListener("click", function(ev){
+    ev.stopPropagation();
+    fsPrompt.classList.remove("show");
+  });
+  document.getElementById("fsPromptInner").addEventListener("click", function(){
+    document.documentElement.requestFullscreen().catch(function(){});
+    fsPrompt.classList.remove("show");
   });
 
   // ---- persistence: Supabase is the shared source of truth; localStorage is just an offline fallback ----
@@ -1091,8 +1136,7 @@
     var cards = Array.prototype.map.call(cardLayer.querySelectorAll(".card"), function(el){
       return { label: el.dataset.label, x: el.style.left, y: el.style.top, type: el.dataset.type, photo: el.dataset.photo||null };
     });
-    var jobNames = jobNameInputs.map(function(inp){ return inp.value; });
-    return { cards: cards, drawing: drawCanvas.toDataURL(), jobNames: jobNames };
+    return { cards: cards, drawing: drawCanvas.toDataURL() };
   }
 
   function renderState(state){
@@ -1105,9 +1149,6 @@
       var img=new Image();
       img.onload=function(){ dctx.drawImage(img,0,0); };
       img.src=state.drawing;
-    }
-    if(state.jobNames){
-      state.jobNames.forEach(function(n,i){ if(jobNameInputs[i]) jobNameInputs[i].value = n; });
     }
   }
 
