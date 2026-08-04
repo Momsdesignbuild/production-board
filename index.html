@@ -779,21 +779,10 @@
   });
 
   function claimDevice(){
-    pinError.textContent = "Checking...";
-    sb.from("claimed_devices").upsert(
-      { device_id: deviceId, label: navigator.userAgent.slice(0,60) },
-      { onConflict: "device_id" }
-    ).then(function(res){
-      if(res.error){
-        pinError.textContent = "Board already claimed by 2 devices.";
-        setTimeout(function(){ pinBuffer=""; renderDots(); pinError.textContent=""; }, 2200);
-        return;
-      }
-      setUnlocked(true);
-      document.body.classList.remove("needsDevPin");
-      closePinModal();
-      document.getElementById("fsPrompt").classList.add("show");
-    });
+    setUnlocked(true);
+    document.body.classList.remove("needsDevPin");
+    closePinModal();
+    document.getElementById("fsPrompt").classList.add("show");
   }
 
   function setUnlocked(v){
@@ -807,7 +796,6 @@
   document.getElementById("forgetDevice").addEventListener("click", function(){
     if(!window.confirm("Re-lock editing on this device? You'll need the PIN again next time.")) return;
     try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
-    sb.from("claimed_devices").delete().eq("device_id", deviceId).then(function(){});
     setUnlocked(false);
     document.body.classList.add("needsDevPin");
     openPinModal();
@@ -827,17 +815,8 @@
       openPinModal();
       return;
     }
-    sb.from("claimed_devices").select("device_id").eq("device_id", deviceId).then(function(res){
-      var stillClaimed = res.data && res.data.length>0;
-      setUnlocked(stillClaimed);
-      if(!stillClaimed){
-        try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
-        document.body.classList.add("needsDevPin");
-        openPinModal();
-      } else {
-        document.getElementById("fsPrompt").classList.add("show");
-      }
-    });
+    setUnlocked(true);
+    document.getElementById("fsPrompt").classList.add("show");
   })();
 
   // ---- color wheel ----
