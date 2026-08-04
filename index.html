@@ -794,6 +794,10 @@
     setUnlocked(false);
   });
   (function initLock(){
+    // Developer Mode / PIN disabled for now — everyone who opens the board can edit.
+    setUnlocked(true);
+    return;
+    /* eslint-disable no-unreachable */
     var saved=false;
     try{ saved = localStorage.getItem(UNLOCK_KEY)==="1"; }catch(e){}
     if(!saved){ setUnlocked(false); return; }
