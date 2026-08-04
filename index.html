@@ -679,10 +679,16 @@
     applyZoom();
   }
 
-  function scheduleFit(){ setTimeout(fitToScreen, 120); }
+  function scheduleFit(){
+    [0, 120, 350, 800, 1600, 3000].forEach(function(ms){ setTimeout(fitToScreen, ms); });
+  }
   scheduleFit();
   window.addEventListener("resize", scheduleFit);
   document.addEventListener("fullscreenchange", scheduleFit);
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(scheduleFit); }
+  if(window.ResizeObserver){
+    new ResizeObserver(scheduleFit).observe(boardWrap);
+  }
 
 
   // pinch-to-zoom (two-finger touch)
