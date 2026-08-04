@@ -77,7 +77,7 @@
   /* top strip: JOBS + date + Days/Dumpster/Camera/Sign/Unavail headers */
   #wbTop{
     display:grid;
-    grid-template-columns: 190px 1fr 140px 90px 90px 90px 260px;
+    grid-template-columns: 190px 1fr 140px 90px 90px 90px 340px;
     border-bottom:3px solid var(--wb-line);
   }
   #wbTop > div{
@@ -95,7 +95,7 @@
   /* main body: left job rows, right side panel */
   #wbMain{
     display:grid;
-    grid-template-columns: 190px 1fr 140px 90px 90px 90px 260px;
+    grid-template-columns: 190px 1fr 140px 90px 90px 90px 340px;
   }
   .jobRow{
     display:contents;
@@ -156,9 +156,11 @@
   /* bottom band: Orders + legend/trucks */
   #wbBottom{
     display:grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 190px 1fr 140px 90px 90px 90px 340px;
     border-top:3px solid var(--wb-line);
   }
+  #ordersPanel{ grid-column: 1 / 7; }
+  #legendTrucks{ grid-column: 7; }
   #wbBottom > div{
     border-right:2px solid var(--wb-line);
     padding:12px;
