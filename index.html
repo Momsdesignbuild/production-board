@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MDB Production Board</title>
+<style>
+  :root{
+    --bg:#0b0d10;
+    --panel:#15181c;
+    --panel2:#1c2025;
+    --line:#2a2f36;
+    --text:#e8ecef;
+    --muted:#8a9199;
+    --accent:#3aa6ff;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    overflow:hidden;
+  }
+  #app{
+    display:grid;
+    grid-template-columns: 1fr 320px;
+    height:100vh;
+    width:100vw;
+  }
+  /* ---------- BOARD ---------- */
+  #boardWrap{
+    position:relative;
+    overflow:auto;
+    padding:24px;
+  }
+  h1{
+    font-size:clamp(20px,2.4vw,34px);
+    margin:0 0 16px 0;
+    letter-spacing:0.5px;
+  }
+  h1 span{color:var(--muted); font-weight:400; font-size:0.55em;}
+  #grid{
+    position:relative;
+    display:inline-grid;
+    grid-template-columns: 220px repeat(6, minmax(180px,1fr));
+    border:2px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    min-width:1400px;
+  }
+  .cell{
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    padding:14px 10px;
+    min-height:74px;
+    background:var(--panel);
+  }
+  .head{
+    background:var(--panel2);
+    font-weight:700;
+    text-align:center;
+    font-size:15px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+    position:sticky;
+    top:0;
+    z-index:2;
+  }
+  .rowlabel{
+    background:var(--panel2);
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    font-size:15px;
+    position:sticky;
+    left:0;
+    z-index:1;
+  }
+  .rowlabel.resource{
+    color:var(--muted);
+    font-weight:600;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+  }
+  .corner{
+    background:var(--panel2);
+    position:sticky;
+    top:0; left:0;
+    z-index:3;
+  }
+  .dropzone.dragover{
+    outline:2px dashed var(--accent);
+    outline-offset:-4px;
+  }
+  /* ---------- CARDS (free-floating layer) ---------- */
+  #cardLayer{
+    position:absolute;
+    top:0; left:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+  }
+  .card{
+    position:absolute;
+    pointer-events:auto;
+    min-width:96px;
+    max-width:180px;
+    padding:8px 10px;
+    border-radius:9px;
+    font-size:14px;
+    font-weight:700;
+    color:#0b0d10;
+    box-shadow:0 3px 10px rgba(0,0,0,0.45);
+    cursor:grab;
+    user-select:none;
+    border:2px solid rgba(0,0,0,0.15);
+    touch-action:none;
+  }
+  .card.selected{
+    outline:3px solid #fff;
+    outline-offset:2px;
+  }
+  .card .x{
+    position:absolute;
+    top:-8px; right:-8px;
+    width:20px;height:20px;
+    border-radius:50%;
+    background:#1c2025;
+    color:#e8ecef;
+    border:1px solid var(--line);
+    font-size:12px;
+    line-height:18px;
+    text-align:center;
+    cursor:pointer;
+  }
+  /* draw layer */
+  #drawCanvas{
+    position:absolute;
+    top:0; left:0;
+    z-index:5;
+  }
+  /* ---------- SIDEBAR ---------- */
+  #sidebar{
+    background:var(--panel);
+    border-left:1px solid var(--line);
+    padding:20px;
+    overflow-y:auto;
+  }
+  #sidebar h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--muted);
+    margin:24px 0 10px 0;
+  }
+  #sidebar h2:first-child{margin-top:0;}
+  button{
+    font:inherit;
+    cursor:pointer;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--panel2);
+    color:var(--text);
+    padding:10px 12px;
+    font-size:14px;
+    width:100%;
+    margin-bottom:8px;
+  }
+  button:hover{border-color:var(--accent);}
+  button.primary{
+    background:var(--accent);
+    color:#08131c;
+    border-color:var(--accent);
+    font-weight:700;
+  }
+  button.active{
+    background:#ffb020;
+    color:#1a1200;
+    border-color:#ffb020;
+  }
+  #wheelWrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  #wheel{
+    border-radius:50%;
+    cursor:crosshair;
+    box-shadow:0 0 0 4px var(--panel2);
+  }
+  #swatch{
+    width:100%;
+    height:34px;
+    border-radius:8px;
+    border:1px solid var(--line);
+  }
+  input[type=range]{width:100%;}
+  .row{display:flex; gap:8px; align-items:center;}
+  .row label{font-size:12px; color:var(--muted); width:60px;}
+  #penWidthLabel, #lightLabel{font-size:12px; color:var(--muted);}
+  .hint{
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.5;
+    margin-top:6px;
+  }
+  #fsBtn{margin-top:10px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="boardWrap">
+    <h1>MDB Production Board <span id="clock"></span></h1>
+    <div id="grid">
+      <div class="cell corner"></div>
+      <!-- day headers injected by JS -->
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <h2>Color Wheel</h2>
+    <div id="wheelWrap">
+      <canvas id="wheel" width="200" height="200"></canvas>
+      <div class="row" style="width:100%">
+        <label>Light</label>
+        <input type="range" id="light" min="15" max="90" value="55">
+      </div>
+      <div id="swatch"></div>
+    </div>
+    <div class="hint">Click a card first to recolor it, or just pick a color to use for the next new card / pen strokes.</div>
+
+    <h2>Cards</h2>
+    <button class="primary" id="addCard">+ Add Card</button>
+    <div class="hint">Type a label (job, truck #, crew name...), drag it anywhere on the board — exactly like moving a magnet.</div>
+
+    <h2>Pen</h2>
+    <button id="penToggle">✏️ Draw Mode</button>
+    <div class="row">
+      <label id="penWidthLabel">Width 4</label>
+      <input type="range" id="penWidth" min="1" max="16" value="4">
+    </div>
+    <button id="clearDraw">Clear Drawing</button>
+
+    <h2>Board</h2>
+    <button id="clearCards">Clear All Cards</button>
+    <button id="fsBtn">⛶ Fullscreen (for TV)</button>
+    <div class="hint">Nothing here saves to a server — this is a play/arrange layer only. It remembers your layout on THIS browser (localStorage) until cleared.</div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var DAYS = ["MON","TUE","WED","THU","FRI","SAT"];
+  var JOB_ROWS = ["JAHNZ","LEJEUNE","FEHR","LINDBERGH","VANDER WOUDE","LINDQUIST"];
+  var RESOURCE_ROWS = ["DUMPSTERS","CAMERA / SIGN","UNAVAILABLE / MAINT.","EQUIPMENT","TRAILERS","TRUCKS"];
+
+  var grid = document.getElementById("grid");
+  var boardWrap = document.getElementById("boardWrap");
+
+  // ---- build grid ----
+  DAYS.forEach(function(d){
+    var h = document.createElement("div");
+    h.className = "cell head";
+    h.textContent = d;
+    grid.appendChild(h);
+  });
+
+  function addRow(label, resource){
+    var lab = document.createElement("div");
+    lab.className = "cell rowlabel" + (resource ? " resource" : "");
+    lab.textContent = label;
+    grid.appendChild(lab);
+    DAYS.forEach(function(){
+      var c = document.createElement("div");
+      c.className = "cell dropzone";
+      grid.appendChild(c);
+    });
+  }
+
+  JOB_ROWS.forEach(function(j){ addRow(j, false); });
+  RESOURCE_ROWS.forEach(function(r){ addRow(r, true); });
+
+  // free-floating card layer sits on top of the grid
+  var cardLayer = document.createElement("div");
+  cardLayer.id = "cardLayer";
+  grid.appendChild(cardLayer);
+
+  var drawCanvas = document.createElement("canvas");
+  drawCanvas.id = "drawCanvas";
+  grid.appendChild(drawCanvas);
+  var dctx = drawCanvas.getContext("2d");
+
+  function sizeLayers(){
+    var w = grid.scrollWidth, h = grid.scrollHeight;
+    cardLayer.style.width = w + "px";
+    cardLayer.style.height = h + "px";
+    var prev = document.createElement("canvas");
+    prev.width = drawCanvas.width; prev.height = drawCanvas.height;
+    prev.getContext("2d").drawImage(drawCanvas,0,0);
+    drawCanvas.width = w; drawCanvas.height = h;
+    dctx.drawImage(prev,0,0);
+    dctx.lineCap = "round"; dctx.lineJoin = "round";
+  }
+  setTimeout(sizeLayers, 50);
+  window.addEventListener("resize", sizeLayers);
+
+  // ---- clock ----
+  function tick(){
+    var now = new Date();
+    document.getElementById("clock").textContent =
+      now.toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric'}) + " — " +
+      now.toLocaleTimeString(undefined,{hour:'2-digit', minute:'2-digit'});
+  }
+  tick(); setInterval(tick, 30000);
+
+  // ---- color wheel ----
+  var wheel = document.getElementById("wheel");
+  var wctx = wheel.getContext("2d");
+  var W = wheel.width, R = W/2;
+  var lightSlider = document.getElementById("light");
+  var currentColor = "hsl(205, 90%, 55%)";
+  var currentHue = 205, currentSat = 90;
+
+  function drawWheel(){
+    var img = wctx.createImageData(W, W);
+    var L = parseInt(lightSlider.value,10);
+    for(var y=0;y<W;y++){
+      for(var x=0;x<W;x++){
+        var dx = x-R, dy = y-R;
+        var dist = Math.sqrt(dx*dx+dy*dy);
+        var idx = (y*W+x)*4;
+        if(dist<=R){
+          var hue = (Math.atan2(dy,dx)*180/Math.PI + 360) % 360;
+          var sat = Math.min(100, dist/R*100);
+          var rgb = hslToRgb(hue/360, sat/100, L/100);
+          img.data[idx]=rgb[0]; img.data[idx+1]=rgb[1]; img.data[idx+2]=rgb[2]; img.data[idx+3]=255;
+        } else {
+          img.data[idx+3]=0;
+        }
+      }
+    }
+    wctx.putImageData(img,0,0);
+  }
+  function hslToRgb(h,s,l){
+    var r,g,b;
+    if(s===0){ r=g=b=l; } else {
+      function hue2rgb(p,q,t){
+        if(t<0)t+=1; if(t>1)t-=1;
+        if(t<1/6) return p+(q-p)*6*t;
+        if(t<1/2) return q;
+        if(t<2/3) return p+(q-p)*(2/3-t)*6;
+        return p;
+      }
+      var q = l<0.5 ? l*(1+s) : l+s-l*s;
+      var p = 2*l-q;
+      r = hue2rgb(p,q,h+1/3); g = hue2rgb(p,q,h); b = hue2rgb(p,q,h-1/3);
+    }
+    return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
+  }
+  drawWheel();
+  lightSlider.addEventListener("input", function(){
+    drawWheel();
+    updateColor(currentHue, currentSat, parseInt(lightSlider.value,10));
+  });
+
+  function updateColor(h,s,l){
+    currentHue = h; currentSat = s;
+    currentColor = "hsl(" + h.toFixed(0) + "," + s.toFixed(0) + "%," + l + "%)";
+    document.getElementById("swatch").style.background = currentColor;
+    if(selectedCard){
+      selectedCard.style.background = currentColor;
+      saveState();
+    }
+  }
+  wheel.addEventListener("click", function(e){
+    var rect = wheel.getBoundingClientRect();
+    var x = e.clientX-rect.left-R, y = e.clientY-rect.top-R;
+    var dist = Math.sqrt(x*x+y*y);
+    if(dist>R) return;
+    var hue = (Math.atan2(y,x)*180/Math.PI+360)%360;
+    var sat = Math.min(100, dist/R*100);
+    updateColor(hue, sat, parseInt(lightSlider.value,10));
+  });
+
+  // ---- cards ----
+  var selectedCard = null;
+  var cardSeq = 0;
+
+  function makeCard(label, x, y, color){
+    cardSeq++;
+    var el = document.createElement("div");
+    el.className = "card";
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    el.style.background = color;
+    el.dataset.id = "c"+cardSeq;
+    el.innerHTML = '<span class="lbl">'+escapeHtml(label)+'</span><span class="x">✕</span>';
+    cardLayer.appendChild(el);
+    wireCard(el);
+    return el;
+  }
+
+  function escapeHtml(s){
+    var d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function wireCard(el){
+    el.querySelector(".x").addEventListener("click", function(ev){
+      ev.stopPropagation();
+      el.remove();
+      if(selectedCard===el) selectedCard=null;
+      saveState();
+    });
+
+    var dragging=false, offX=0, offY=0;
+    el.addEventListener("pointerdown", function(e){
+      if(e.target.classList.contains("x")) return;
+      selectCard(el);
+      dragging = true;
+      el.setPointerCapture(e.pointerId);
+      var r = cardLayer.getBoundingClientRect();
+      offX = e.clientX - r.left - el.offsetLeft;
+      offY = e.clientY - r.top - el.offsetTop;
+      el.style.cursor="grabbing";
+    });
+    el.addEventListener("pointermove", function(e){
+      if(!dragging) return;
+      var r = cardLayer.getBoundingClientRect();
+      var nx = e.clientX - r.left - offX;
+      var ny = e.clientY - r.top - offY;
+      nx = Math.max(0, Math.min(nx, r.width-el.offsetWidth));
+      ny = Math.max(0, Math.min(ny, r.height-el.offsetHeight));
+      el.style.left = nx+"px";
+      el.style.top = ny+"px";
+    });
+    function endDrag(e){
+      if(!dragging) return;
+      dragging=false;
+      el.style.cursor="grab";
+      saveState();
+    }
+    el.addEventListener("pointerup", endDrag);
+    el.addEventListener("pointercancel", endDrag);
+  }
+
+  function selectCard(el){
+    if(selectedCard) selectedCard.classList.remove("selected");
+    selectedCard = el;
+    el.classList.add("selected");
+  }
+  boardWrap.addEventListener("pointerdown", function(e){
+    if(!e.target.closest(".card")){
+      if(selectedCard){ selectedCard.classList.remove("selected"); selectedCard=null; }
+    }
+  });
+
+  document.getElementById("addCard").addEventListener("click", function(){
+    var label = window.prompt("Card label (job name, truck #, crew...)", "New");
+    if(label===null) return;
+    if(!label.trim()) label="—";
+    var x = 40 + Math.random()*120;
+    var y = 90 + Math.random()*120;
+    var card = makeCard(label.trim(), x, y, currentColor);
+    selectCard(card);
+    saveState();
+  });
+
+  document.getElementById("clearCards").addEventListener("click", function(){
+    if(!window.confirm("Remove all cards from the board?")) return;
+    cardLayer.innerHTML = "";
+    selectedCard = null;
+    saveState();
+  });
+
+  // ---- pen / draw ----
+  var drawMode = false;
+  var penBtn = document.getElementById("penToggle");
+  var penWidth = document.getElementById("penWidth");
+  var penWidthLabel = document.getElementById("penWidthLabel");
+  penWidth.addEventListener("input", function(){
+    penWidthLabel.textContent = "Width " + penWidth.value;
+  });
+
+  penBtn.addEventListener("click", function(){
+    drawMode = !drawMode;
+    penBtn.classList.toggle("active", drawMode);
+    drawCanvas.style.pointerEvents = drawMode ? "auto" : "none";
+    cardLayer.style.pointerEvents = drawMode ? "none" : "auto";
+  });
+  drawCanvas.style.pointerEvents = "none";
+
+  var drawing = false;
+  drawCanvas.addEventListener("pointerdown", function(e){
+    if(!drawMode) return;
+    drawing = true;
+    drawCanvas.setPointerCapture(e.pointerId);
+    var r = drawCanvas.getBoundingClientRect();
+    dctx.beginPath();
+    dctx.moveTo(e.clientX-r.left, e.clientY-r.top);
+    dctx.strokeStyle = currentColor;
+    dctx.lineWidth = parseInt(penWidth.value,10);
+  });
+  drawCanvas.addEventListener("pointermove", function(e){
+    if(!drawing) return;
+    var r = drawCanvas.getBoundingClientRect();
+    dctx.lineTo(e.clientX-r.left, e.clientY-r.top);
+    dctx.stroke();
+  });
+  function endStroke(){ if(drawing){ drawing=false; saveState(); } }
+  drawCanvas.addEventListener("pointerup", endStroke);
+  drawCanvas.addEventListener("pointercancel", endStroke);
+
+  document.getElementById("clearDraw").addEventListener("click", function(){
+    dctx.clearRect(0,0,drawCanvas.width, drawCanvas.height);
+    saveState();
+  });
+
+  // ---- fullscreen (for wall TV) ----
+  document.getElementById("fsBtn").addEventListener("click", function(){
+    if(document.fullscreenElement){ document.exitFullscreen(); }
+    else { document.documentElement.requestFullscreen().catch(function(){}); }
+  });
+
+  // ---- persistence (local only, no server) ----
+  var STORE_KEY = "mdb_production_board_v1";
+  function saveState(){
+    try{
+      var cards = Array.prototype.map.call(cardLayer.querySelectorAll(".card"), function(el){
+        return {
+          label: el.querySelector(".lbl").textContent,
+          x: el.style.left, y: el.style.top,
+          color: el.style.background
+        };
+      });
+      var state = { cards: cards, drawing: drawCanvas.toDataURL() };
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    }catch(e){}
+  }
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(!raw) return;
+      var state = JSON.parse(raw);
+      (state.cards||[]).forEach(function(c){
+        var el = makeCard(c.label, parseInt(c.x,10)||40, parseInt(c.y,10)||90, c.color);
+      });
+      if(state.drawing){
+        var img = new Image();
+        img.onload = function(){ dctx.drawImage(img,0,0); };
+        img.src = state.drawing;
+      }
+    }catch(e){}
+  }
+  setTimeout(loadState, 120);
+
+})();
+</script>
+</body>
+</html>
