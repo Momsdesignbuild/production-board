@@ -366,6 +366,7 @@
   #cardModal .actions{ display:flex; gap:8px; }
   #photoPreview{ width:100%; max-height:120px; object-fit:cover; border-radius:8px; margin-bottom:12px; display:none; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 <div id="app">
@@ -485,6 +486,17 @@
   "use strict";
 
   var PIN = "1993";
+
+  var SUPABASE_URL = "https://lufrguiekfkhtxsgcqjo.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_X0ZdxFcP9-ieZACJVSUmmg_PPPGQ__4";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var DEVICE_ID_KEY = "mdb_pb_device_id";
+  var deviceId = null;
+  try{
+    deviceId = localStorage.getItem(DEVICE_ID_KEY);
+    if(!deviceId){ deviceId = crypto.randomUUID(); localStorage.setItem(DEVICE_ID_KEY, deviceId); }
+  }catch(e){ deviceId = "unknown"; }
 
   var JOB_ROWS = [
     { name:"Jahnz", color:"blue", seed:["Ryan","Elvin","Alexis","Jose","Haas","Nick"] },
@@ -617,7 +629,7 @@
       pinBuffer += btn.dataset.k;
       renderDots();
       if(pinBuffer.length===PIN.length){
-        if(pinBuffer===PIN){ setUnlocked(true); closePinModal(); }
+        if(pinBuffer===PIN){ claimDevice(); }
         else{
           pinError.textContent = "Wrong PIN — try again";
           setTimeout(function(){ pinBuffer=""; renderDots(); }, 350);
@@ -625,6 +637,22 @@
       }
     });
   });
+
+  function claimDevice(){
+    pinError.textContent = "Checking...";
+    sb.from("claimed_devices").upsert(
+      { device_id: deviceId, label: navigator.userAgent.slice(0,60) },
+      { onConflict: "device_id" }
+    ).then(function(res){
+      if(res.error){
+        pinError.textContent = "Board already claimed by 2 devices.";
+        setTimeout(function(){ pinBuffer=""; renderDots(); pinError.textContent=""; }, 2200);
+        return;
+      }
+      setUnlocked(true);
+      closePinModal();
+    });
+  }
 
   function setUnlocked(v){
     unlocked = v;
@@ -636,12 +664,18 @@
   document.getElementById("forgetDevice").addEventListener("click", function(){
     if(!window.confirm("Re-lock editing on this device? You'll need the PIN again next time.")) return;
     try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
+    sb.from("claimed_devices").delete().eq("device_id", deviceId).then(function(){});
     setUnlocked(false);
   });
   (function initLock(){
     var saved=false;
     try{ saved = localStorage.getItem(UNLOCK_KEY)==="1"; }catch(e){}
-    setUnlocked(saved);
+    if(!saved){ setUnlocked(false); return; }
+    sb.from("claimed_devices").select("device_id").eq("device_id", deviceId).then(function(res){
+      var stillClaimed = res.data && res.data.length>0;
+      setUnlocked(stillClaimed);
+      if(!stillClaimed){ try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){} }
+    });
   })();
 
   // ---- color wheel ----
