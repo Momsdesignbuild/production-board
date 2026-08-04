@@ -38,6 +38,10 @@
     width:100vw;
   }
   #sidebar{ display:none; }
+  body.showTools #app{ grid-template-columns: 1fr 320px; }
+  body.showTools #sidebar{ display:block; }
+  #devUnlockOverlay{ display:none; }
+  body.needsDevPin #devUnlockOverlay{ display:flex; }
   #devModeBtn{ display:none !important; }
   /* ---------- BOARD WRAP ---------- */
   #boardWrap{
@@ -62,7 +66,7 @@
     border:10px solid #2b2f33;
     border-radius:10px;
     box-shadow:0 10px 40px rgba(0,0,0,0.5);
-    min-width:1500px;
+    min-width:2025px;
     color:#1a1a1a;
     font-family:'Kalam', -apple-system, sans-serif;
     transform-origin:0 0;
@@ -178,20 +182,26 @@
   }
   #legendTrucks{
     display:grid;
-    grid-template-columns: 1.4fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap:10px;
   }
-  #legendTrucks .box{ position:relative; min-height:190px; }
+  #legendTrucks .box{ position:relative; min-height:220px; display:flex; flex-direction:column; }
   #legendTrucks h3{ font-size:14px; text-transform:uppercase; color:#333; font-family:-apple-system,sans-serif; font-weight:700; margin:0 0 6px 0; }
+  #rightStack{ display:flex; flex-direction:column; gap:8px; height:100%; }
+  #panelTrucks{ flex:1; min-height:60px !important; }
   #vacaBox{
-    margin-top:10px;
+    flex:1;
     border:2px solid var(--wb-red);
     border-radius:6px;
     padding:6px 8px;
-    min-height:70px;
+    min-height:60px;
     position:relative;
+    display:flex;
+    flex-direction:column;
   }
   #vacaBox h3{ color:var(--wb-red); font-size:13px; }
+  #panelSpare{ flex:1; min-height:60px !important; }
+  #panelSpare h3{ visibility:hidden; }
 
   /* ---------- CARDS (free-floating layer over whole whiteboard) ---------- */
   #cardLayer{
@@ -405,6 +415,7 @@
   #pinDots span{ width:16px;height:16px;border-radius:50%; border:2px solid var(--muted); }
   #pinDots span.filled{ background:var(--accent); border-color:var(--accent); }
   #keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  body.needsDevPin #pinCancel{ visibility:hidden; }
   #keypad button{ font-size:20px; padding:16px 0; margin:0; }
   #pinError{ color:#ff6a6a; font-size:12px; height:16px; margin-top:10px; }
   #cardModal input[type=text]{
@@ -454,10 +465,11 @@
           <div id="ordersGrid"></div>
         </div>
         <div id="legendTrucks">
-          <div class="box" id="panelLegend"><h3>Dumpster · Sign · Camera</h3><div class="lane"></div></div>
-          <div>
-            <div class="box" id="panelTrucks" style="min-height:110px;"><h3>Trucks</h3><div class="lane"></div></div>
+          <div class="box" id="panelLegend"><h3>Dumpster, Sign, Camera</h3><div class="lane"></div></div>
+          <div id="rightStack">
+            <div class="box" id="panelTrucks"><h3>Trucks</h3><div class="lane"></div></div>
             <div id="vacaBox"><h3>VACA, SICK, OUT, ETC.</h3><div class="lane"></div></div>
+            <div class="box" id="panelSpare"><h3>Spare</h3><div class="lane"></div></div>
           </div>
         </div>
       </div>
@@ -507,7 +519,7 @@
 
 </div>
 
-<div class="modalOverlay show" id="fsPrompt">
+<div class="modalOverlay" id="fsPrompt">
   <div class="modal" style="cursor:pointer;" id="fsPromptInner">
     <h3>⛶ Enter Full Screen</h3>
     <div class="hint" style="margin-bottom:16px;">Hides the address bar and tabs — best for the TV.<br>Tap anywhere here to start.</div>
@@ -557,6 +569,7 @@
   "use strict";
 
   var PIN = "1993";
+  var IS_DEV = location.pathname.replace(/\/+$/,"") === "/dev";
 
   var SUPABASE_URL = "https://lufrguiekfkhtxsgcqjo.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_X0ZdxFcP9-ieZACJVSUmmg_PPPGQ__4";
@@ -628,6 +641,7 @@
   laneEls["legend"] = document.querySelector("#panelLegend .lane");
   laneEls["trucks"] = document.querySelector("#panelTrucks .lane");
   laneEls["vaca"] = document.querySelector("#vacaBox .lane");
+  laneEls["spare"] = document.querySelector("#panelSpare .lane");
 
   // orders sub-grid (decorative, matches the ruled empty grid under Orders)
   var ordersGrid = document.getElementById("ordersGrid");
@@ -776,15 +790,18 @@
         return;
       }
       setUnlocked(true);
+      document.body.classList.remove("needsDevPin");
       closePinModal();
+      document.getElementById("fsPrompt").classList.add("show");
     });
   }
 
   function setUnlocked(v){
     unlocked = v;
     document.body.classList.toggle("unlocked", v);
+    document.body.classList.toggle("showTools", v && IS_DEV);
     document.getElementById("editTools").style.display = v ? "block" : "none";
-    document.getElementById("viewOnlyNotice").style.display = v ? "none" : "block";
+    document.getElementById("viewOnlyNotice").style.display = (v || !IS_DEV) ? "none" : "block";
     if(v){ try{ localStorage.setItem(UNLOCK_KEY,"1"); }catch(e){} }
   }
   document.getElementById("forgetDevice").addEventListener("click", function(){
@@ -792,19 +809,34 @@
     try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
     sb.from("claimed_devices").delete().eq("device_id", deviceId).then(function(){});
     setUnlocked(false);
+    document.body.classList.add("needsDevPin");
+    openPinModal();
   });
   (function initLock(){
-    // Developer Mode / PIN disabled for now — everyone who opens the board can edit.
-    setUnlocked(true);
-    return;
-    /* eslint-disable no-unreachable */
+    if(!IS_DEV){
+      setUnlocked(false);
+      document.getElementById("viewOnlyNotice").style.display = "none";
+      document.getElementById("fsPrompt").classList.add("show");
+      return;
+    }
     var saved=false;
     try{ saved = localStorage.getItem(UNLOCK_KEY)==="1"; }catch(e){}
-    if(!saved){ setUnlocked(false); return; }
+    if(!saved){
+      setUnlocked(false);
+      document.body.classList.add("needsDevPin");
+      openPinModal();
+      return;
+    }
     sb.from("claimed_devices").select("device_id").eq("device_id", deviceId).then(function(res){
       var stillClaimed = res.data && res.data.length>0;
       setUnlocked(stillClaimed);
-      if(!stillClaimed){ try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){} }
+      if(!stillClaimed){
+        try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
+        document.body.classList.add("needsDevPin");
+        openPinModal();
+      } else {
+        document.getElementById("fsPrompt").classList.add("show");
+      }
     });
   })();
 
