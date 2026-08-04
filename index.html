@@ -199,33 +199,61 @@
   .card{
     position:absolute;
     pointer-events:auto;
-    min-width:64px;
-    max-width:150px;
-    padding:5px 8px;
-    border-radius:7px;
-    font-size:12px;
-    font-weight:700;
-    color:#0b0d10;
-    box-shadow:0 3px 8px rgba(0,0,0,0.35);
     cursor:grab;
     user-select:none;
-    border:2px solid rgba(0,0,0,0.15);
     touch-action:none;
     font-family:-apple-system,sans-serif;
-    text-align:center;
-    line-height:1.25;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+    border-radius:3px;
+    overflow:hidden;
+    background:#3a3d42;
+    transform:rotate(var(--tilt,0deg));
   }
+  .card.type-person{ width:78px; height:96px; }
+  .card.type-vehicle{ width:118px; height:72px; }
   .card.selected{
     outline:3px solid #1f5fa8;
     outline-offset:2px;
   }
-  .card img{
-    display:block;
-    width:100%;
-    max-height:70px;
-    object-fit:cover;
-    border-radius:5px;
-    margin-bottom:4px;
+  .card .photo{
+    position:absolute; inset:0;
+    background-size:cover;
+    background-position:center;
+    pointer-events:none;
+  }
+  .card.type-person .photo{ background-color:#5b6570; }
+  .card.type-vehicle .photo{ background-color:#7f8a92; }
+  .card .bar{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    padding:3px 4px;
+    font-weight:800;
+    color:#fff;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+    text-align:center;
+    pointer-events:none;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .card.type-person .bar{ background:rgba(10,10,10,0.88); font-size:10px; padding:4px 3px; }
+  .card.type-vehicle .bar{ background:linear-gradient(90deg,#2f7c8c,#1f5f6c); font-size:10px; }
+  .card .badgeD{
+    position:absolute; top:0; right:0;
+    width:0; height:0;
+    border-style:solid;
+    border-width:0 18px 18px 0;
+    border-color:transparent #fff transparent transparent;
+  }
+  .card .badgeD span{
+    position:absolute; top:1px; right:-16px;
+    font-size:9px; font-weight:900; color:#111;
+  }
+  .card .noPhoto{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; color:rgba(255,255,255,0.5);
     pointer-events:none;
   }
   .card .x{
@@ -240,6 +268,7 @@
     line-height:16px;
     text-align:center;
     cursor:pointer;
+    z-index:3;
   }
   #drawCanvas{
     position:absolute;
@@ -472,8 +501,12 @@
   <div class="modal" id="cardModal">
     <h3>New Card</h3>
     <img id="photoPreview" alt="">
-    <input type="text" id="cardLabelInput" placeholder="Job, truck #, crew...">
-    <input type="file" id="cardPhotoInput" accept="image/*">
+    <div class="actions" style="margin-bottom:12px;">
+      <button class="primary" id="typePerson">👤 Person</button>
+      <button id="typeVehicle">🚚 Truck / Equipment</button>
+    </div>
+    <input type="text" id="cardLabelInput" placeholder="First name / truck name...">
+    <input type="file" id="cardPhotoInput" accept="image/*" capture="environment">
     <div class="actions">
       <button id="cardCancel">Cancel</button>
       <button class="primary" id="cardCreate">Create</button>
@@ -499,23 +532,23 @@
   }catch(e){ deviceId = "unknown"; }
 
   var JOB_ROWS = [
-    { name:"Jahnz", color:"blue", seed:["Ryan","Elvin","Alexis","Jose","Haas","Nick"] },
-    { name:"LeJeune", color:"blue", seed:["Eathan","Hayden","Gavin","Robin","Luke","Triax"] },
-    { name:"Fehr", color:"green", seed:["Marvin"] },
-    { name:"Lind", color:"green", seed:["Blake","Andrew","Todd","Batman","Jerry","T66H","Ramsey"] },
-    { name:"Vander Woude", color:"blue", seed:["Adrian","Yelsi","Dalber","Pedro","Frank","Ben","Jeremiah","The 35","Tilt Trailer","T650","Lily"] },
-    { name:"Lindquist", color:"blue", seed:["RM Crew","T66"] },
-    { name:"", color:"blue", seed:["Tony","The Mack"] },
-    { name:"", color:"blue", seed:["Kelly","Chris"] }
+    { name:"Jahnz", color:"blue", seed:["Ryan#p","Elvin#p","Alexis#p","Jose#p","Haas#v","Nick#v"] },
+    { name:"LeJeune", color:"blue", seed:["Eathan#p","Hayden#p","Gavin#p","Robin#v","Luke#v","Triax#v"] },
+    { name:"Fehr", color:"green", seed:["Marvin#p"] },
+    { name:"Lind", color:"green", seed:["Blake#p","Andrew#p","Todd#p","Batman#v","Jerry#v","T66H#v","Ramsey#v"] },
+    { name:"Vander Woude", color:"blue", seed:["Adrian#p","Yelsi#p","Dalber#p","Pedro#p","Frank#v","Ben#v","Jeremiah#v","The 35#v","Tilt Trailer#v","T650#v","Lily#v"] },
+    { name:"Lindquist", color:"blue", seed:["RM Crew#p","T66#v"] },
+    { name:"", color:"blue", seed:["Tony#p","The Mack#v"] },
+    { name:"", color:"blue", seed:["Kelly#p","Chris#p"] }
   ];
 
   var PANEL_SEEDS = {
-    unavail: ["Joe","Dumpster 15-1","Small Utility Trailer","Cody","Bo"],
-    equipment: ["CAT 918","MT52","Excavator","KX057-5","Bobcat 1770","Kubota 430","Mini Excavator"],
-    trailers: ["FG Trailer","Haulmark","Work Order","Dump Trailer","Black Deck Over","Tri-Axle Deck Over","Chipper"],
-    legend: ["Dumpster 15-2","Dumpster 10-2","Dumpster 10-3","Dumpster 20-2","Dumpster 10-1","Dumpster 20-1","Dumpster 15-4","Skyscraper 1","Skyscraper 2","Skyscraper 3","Skyscraper 4","Skyscraper 5","Skyscraper 6","Skyscraper 8","Jobsite Cam 1","Jobsite Cam 2","Jobsite Cam 3","Jobsite Cam 4","Jobsite Cam 5","Jobsite Cam 6"],
-    trucks: ["Corey"],
-    vaca: ["Max"]
+    unavail: ["Joe#p","Dumpster 15-1#v","Small Utility Trailer#v","Cody#v","Bo#v"],
+    equipment: ["CAT 918#v","MT52#v","Excavator#v","KX057-5#v","Bobcat 1770#v","Kubota 430#v","Mini Excavator#v"],
+    trailers: ["FG Trailer#v","Haulmark#v","Work Order#v","Dump Trailer#v","Black Deck Over#v","Tri-Axle Deck Over#v","Chipper#v"],
+    legend: ["Dumpster 15-2#v","Dumpster 10-2#v","Dumpster 10-3#v","Dumpster 20-2#v","Dumpster 10-1#v","Dumpster 20-1#v","Dumpster 15-4#v","Skyscraper 1#v","Skyscraper 2#v","Skyscraper 3#v","Skyscraper 4#v","Skyscraper 5#v","Skyscraper 6#v","Skyscraper 8#v","Jobsite Cam 1#v","Jobsite Cam 2#v","Jobsite Cam 3#v","Jobsite Cam 4#v","Jobsite Cam 5#v","Jobsite Cam 6#v"],
+    trucks: ["Corey#v"],
+    vaca: ["Max#p"]
   };
 
   var whiteboard = document.getElementById("whiteboard");
@@ -728,7 +761,6 @@
     currentHue=h; currentSat=s;
     currentColor = "hsl("+h.toFixed(0)+","+s.toFixed(0)+"%,"+l+"%)";
     document.getElementById("swatch").style.background = currentColor;
-    if(selectedCard){ selectedCard.style.background = currentColor; saveState(); }
   }
   wheel.addEventListener("click", function(e){
     if(!unlocked) return;
@@ -745,17 +777,22 @@
   var selectedCard = null;
   var cardSeq = 0;
 
-  function makeCard(label, x, y, color, photo){
+  function makeCard(label, x, y, color, photo, type){
     cardSeq++;
+    type = type === "v" ? "v" : "p";
     var el = document.createElement("div");
-    el.className = "card";
+    el.className = "card type-" + (type==="v" ? "vehicle" : "person");
     el.style.left = x+"px";
     el.style.top = y+"px";
-    el.style.background = color;
+    el.style.setProperty("--tilt", ((cardSeq % 5) - 2) * 0.6 + "deg");
     el.dataset.id = "c"+cardSeq;
-    var html = "";
-    if(photo) html += '<img src="'+photo+'" alt="">';
-    html += '<span class="lbl">'+escapeHtml(label)+'</span><span class="x">✕</span>';
+    el.dataset.type = type;
+    el.dataset.label = label;
+    var html = '<div class="photo"' + (photo ? ' style="background-image:url(\''+photo+'\')"' : '') + '>' +
+      (photo ? '' : '<span class="noPhoto">'+(type==="v"?"🚚":"👤")+'</span>') +
+      '</div>';
+    if(type==="p") html += '<div class="badgeD"><span>D</span></div>';
+    html += '<div class="bar">'+escapeHtml(label)+'</div><span class="x">✕</span>';
     el.innerHTML = html;
     if(photo) el.dataset.photo = photo;
     cardLayer.appendChild(el);
@@ -765,6 +802,27 @@
   function escapeHtml(s){
     var d=document.createElement("div"); d.textContent=s; return d.innerHTML;
   }
+  var photoInput = document.createElement("input");
+  photoInput.type = "file"; photoInput.accept = "image/*";
+  photoInput.style.display = "none";
+  document.body.appendChild(photoInput);
+  var photoTargetCard = null;
+  photoInput.addEventListener("change", function(){
+    var f = photoInput.files[0];
+    if(!f || !photoTargetCard) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var url = e.target.result;
+      photoTargetCard.dataset.photo = url;
+      var ph = photoTargetCard.querySelector(".photo");
+      ph.style.backgroundImage = "url('"+url+"')";
+      var np = ph.querySelector(".noPhoto");
+      if(np) np.remove();
+      saveState();
+    };
+    reader.readAsDataURL(f);
+  });
+
   function wireCard(el){
     el.querySelector(".x").addEventListener("click", function(ev){
       ev.stopPropagation();
@@ -772,6 +830,12 @@
       el.remove();
       if(selectedCard===el) selectedCard=null;
       saveState();
+    });
+    el.querySelector(".photo").addEventListener("click", function(ev){
+      if(!unlocked || el.dataset.photo) return;
+      ev.stopPropagation();
+      photoTargetCard = el;
+      photoInput.click();
     });
     var dragging=false, offX=0, offY=0;
     el.addEventListener("pointerdown", function(e){
@@ -810,25 +874,27 @@
   });
 
   // place a card inside a given lane element's current on-screen rect (relative to whiteboard)
-  function placeInLane(laneKey, label, offsetIndex, color){
+  function placeInLane(laneKey, entry, offsetIndex){
     var laneEl = laneEls[laneKey];
     if(!laneEl) return;
+    var parts = entry.split("#");
+    var label = parts[0], type = parts[1] || "v";
+    var w = type==="p" ? 84 : 124;
+    var perRow = 5;
     var wbRect = whiteboard.getBoundingClientRect();
     var lRect = laneEl.getBoundingClientRect();
-    var col = offsetIndex % 4, row = Math.floor(offsetIndex/4);
-    var x = (lRect.left - wbRect.left) + 6 + col*70;
-    var y = (lRect.top - wbRect.top) + 6 + row*46;
-    makeCard(label, x, y, color);
+    var col = offsetIndex % perRow, row = Math.floor(offsetIndex/perRow);
+    var x = (lRect.left - wbRect.left) + 6 + col*w;
+    var y = (lRect.top - wbRect.top) + 6 + row*100;
+    makeCard(label, x, y, null, null, type);
   }
 
   function seedDefaults(){
-    var palette = ["hsl(48,85%,68%)","hsl(205,80%,68%)","hsl(150,55%,58%)","hsl(15,80%,65%)","hsl(280,45%,70%)"];
-    var p = 0;
     JOB_ROWS.forEach(function(job){
-      job.seed.forEach(function(name, i){ placeInLane("job:"+job.name, name, i, palette[(p++)%palette.length]); });
+      job.seed.forEach(function(entry, i){ placeInLane("job:"+job.name, entry, i); });
     });
     Object.keys(PANEL_SEEDS).forEach(function(key){
-      PANEL_SEEDS[key].forEach(function(name, i){ placeInLane(key, name, i, palette[(p++)%palette.length]); });
+      PANEL_SEEDS[key].forEach(function(entry, i){ placeInLane(key, entry, i); });
     });
     saveState();
   }
@@ -839,10 +905,21 @@
   var cardPhotoInput = document.getElementById("cardPhotoInput");
   var photoPreview = document.getElementById("photoPreview");
   var pendingPhoto = null;
+  var pendingType = "p";
+  var typePersonBtn = document.getElementById("typePerson");
+  var typeVehicleBtn = document.getElementById("typeVehicle");
+  function setPendingType(t){
+    pendingType = t;
+    typePersonBtn.classList.toggle("primary", t==="p");
+    typeVehicleBtn.classList.toggle("primary", t==="v");
+  }
+  typePersonBtn.addEventListener("click", function(){ setPendingType("p"); });
+  typeVehicleBtn.addEventListener("click", function(){ setPendingType("v"); });
 
   document.getElementById("addCard").addEventListener("click", function(){
     if(!unlocked) return;
     cardLabelInput.value=""; cardPhotoInput.value=""; pendingPhoto=null;
+    setPendingType("p");
     photoPreview.style.display="none";
     cardOverlay.classList.add("show");
     setTimeout(function(){ cardLabelInput.focus(); }, 50);
@@ -859,7 +936,7 @@
     var label = cardLabelInput.value.trim() || "—";
     var x = 220 + Math.random()*160;
     var y = 60 + Math.random()*120;
-    var card = makeCard(label, x, y, currentColor, pendingPhoto);
+    var card = makeCard(label, x, y, null, pendingPhoto, pendingType);
     selectCard(card);
     saveState();
     cardOverlay.classList.remove("show");
@@ -918,11 +995,11 @@
   });
 
   // ---- persistence ----
-  var STORE_KEY = "mdb_production_board_v2";
+  var STORE_KEY = "mdb_production_board_v3";
   function saveState(){
     try{
       var cards = Array.prototype.map.call(cardLayer.querySelectorAll(".card"), function(el){
-        return { label: el.querySelector(".lbl").textContent, x: el.style.left, y: el.style.top, color: el.style.background, photo: el.dataset.photo||null };
+        return { label: el.dataset.label, x: el.style.left, y: el.style.top, type: el.dataset.type, photo: el.dataset.photo||null };
       });
       localStorage.setItem(STORE_KEY, JSON.stringify({ cards: cards, drawing: drawCanvas.toDataURL() }));
     }catch(e){}
@@ -933,7 +1010,7 @@
       if(!raw){ seedDefaults(); return; }
       var state = JSON.parse(raw);
       if(!state.cards || !state.cards.length){ seedDefaults(); return; }
-      state.cards.forEach(function(c){ makeCard(c.label, parseInt(c.x,10)||40, parseInt(c.y,10)||90, c.color, c.photo); });
+      state.cards.forEach(function(c){ makeCard(c.label, parseInt(c.x,10)||40, parseInt(c.y,10)||90, null, c.photo, c.type); });
       if(state.drawing){
         var img=new Image();
         img.onload=function(){ dctx.drawImage(img,0,0); };
