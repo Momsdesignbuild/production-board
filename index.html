@@ -92,10 +92,6 @@
     top:0; left:0;
     z-index:3;
   }
-  .dropzone.dragover{
-    outline:2px dashed var(--accent);
-    outline-offset:-4px;
-  }
   /* ---------- CARDS (free-floating layer) ---------- */
   #cardLayer{
     position:absolute;
@@ -120,9 +116,19 @@
     border:2px solid rgba(0,0,0,0.15);
     touch-action:none;
   }
+  .card.locked{ cursor:default; }
   .card.selected{
     outline:3px solid #fff;
     outline-offset:2px;
+  }
+  .card img{
+    display:block;
+    width:100%;
+    max-height:90px;
+    object-fit:cover;
+    border-radius:6px;
+    margin-bottom:6px;
+    pointer-events:none;
   }
   .card .x{
     position:absolute;
@@ -202,7 +208,6 @@
   input[type=range]{width:100%;}
   .row{display:flex; gap:8px; align-items:center;}
   .row label{font-size:12px; color:var(--muted); width:60px;}
-  #penWidthLabel, #lightLabel{font-size:12px; color:var(--muted);}
   .hint{
     font-size:12px;
     color:var(--muted);
@@ -210,6 +215,74 @@
     margin-top:6px;
   }
   #fsBtn{margin-top:10px;}
+
+  /* ---------- lock state ---------- */
+  #viewOnlyNotice{
+    text-align:center;
+    padding:26px 6px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.6;
+  }
+  #devModeBtn{
+    position:fixed;
+    right:14px;
+    bottom:14px;
+    width:auto;
+    opacity:0.28;
+    font-size:11px;
+    padding:6px 10px;
+    z-index:50;
+    background:var(--panel);
+    border-color:var(--line);
+  }
+  #devModeBtn:hover{ opacity:1; }
+  body.unlocked #devModeBtn{ display:none; }
+
+  /* ---------- modals ---------- */
+  .modalOverlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.72);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+  }
+  .modalOverlay.show{ display:flex; }
+  .modal{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:28px;
+    width:320px;
+    text-align:center;
+  }
+  .modal h3{ margin:0 0 16px 0; font-size:18px; }
+  #pinDots{
+    display:flex; gap:12px; justify-content:center; margin-bottom:20px;
+  }
+  #pinDots span{
+    width:16px;height:16px;border-radius:50%;
+    border:2px solid var(--muted);
+  }
+  #pinDots span.filled{ background:var(--accent); border-color:var(--accent); }
+  #keypad{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+  }
+  #keypad button{ font-size:20px; padding:16px 0; margin:0; }
+  #pinError{ color:#ff6a6a; font-size:12px; height:16px; margin-top:10px; }
+  #cardModal input[type=text]{
+    width:100%; padding:10px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--text); font-size:14px; margin-bottom:12px;
+  }
+  #cardModal input[type=file]{ width:100%; margin-bottom:14px; font-size:12px; color:var(--muted); }
+  #cardModal .actions{ display:flex; gap:8px; }
+  #photoPreview{
+    width:100%; max-height:120px; object-fit:cover; border-radius:8px;
+    margin-bottom:12px; display:none;
+  }
 </style>
 </head>
 <body>
@@ -217,6 +290,7 @@
 
   <div id="boardWrap">
     <h1>MDB Production Board <span id="clock"></span></h1>
+    <div id="viewOnlyNotice">Viewing live — editing is locked on this device.</div>
     <div id="grid">
       <div class="cell corner"></div>
       <!-- day headers injected by JS -->
@@ -224,40 +298,74 @@
   </div>
 
   <div id="sidebar">
-    <h2>Color Wheel</h2>
-    <div id="wheelWrap">
-      <canvas id="wheel" width="200" height="200"></canvas>
-      <div class="row" style="width:100%">
-        <label>Light</label>
-        <input type="range" id="light" min="15" max="90" value="55">
+    <div id="editTools" style="display:none;">
+      <h2>Color Wheel</h2>
+      <div id="wheelWrap">
+        <canvas id="wheel" width="200" height="200"></canvas>
+        <div class="row" style="width:100%">
+          <label>Light</label>
+          <input type="range" id="light" min="15" max="90" value="55">
+        </div>
+        <div id="swatch"></div>
       </div>
-      <div id="swatch"></div>
+      <div class="hint">Click a card first to recolor it, or just pick a color to use for the next new card / pen strokes.</div>
+
+      <h2>Cards</h2>
+      <button class="primary" id="addCard">+ Add Card</button>
+      <div class="hint">Label + optional photo. Drag anywhere on the board — exactly like moving a magnet.</div>
+
+      <h2>Pen</h2>
+      <button id="penToggle">✏️ Draw Mode</button>
+      <div class="row">
+        <label id="penWidthLabel">Width 4</label>
+        <input type="range" id="penWidth" min="1" max="16" value="4">
+      </div>
+      <button id="clearDraw">Clear Drawing</button>
+
+      <h2>Board</h2>
+      <button id="clearCards">Clear All Cards</button>
+      <button id="fsBtn">⛶ Fullscreen (for TV)</button>
+      <div class="hint">Nothing here saves to a server — this is a play/arrange layer only. It remembers your layout on THIS browser (localStorage) until cleared.</div>
+      <div class="hint" style="margin-top:20px; cursor:pointer; text-decoration:underline;" id="forgetDevice">Forget this device (re-lock editing)</div>
     </div>
-    <div class="hint">Click a card first to recolor it, or just pick a color to use for the next new card / pen strokes.</div>
-
-    <h2>Cards</h2>
-    <button class="primary" id="addCard">+ Add Card</button>
-    <div class="hint">Type a label (job, truck #, crew name...), drag it anywhere on the board — exactly like moving a magnet.</div>
-
-    <h2>Pen</h2>
-    <button id="penToggle">✏️ Draw Mode</button>
-    <div class="row">
-      <label id="penWidthLabel">Width 4</label>
-      <input type="range" id="penWidth" min="1" max="16" value="4">
-    </div>
-    <button id="clearDraw">Clear Drawing</button>
-
-    <h2>Board</h2>
-    <button id="clearCards">Clear All Cards</button>
-    <button id="fsBtn">⛶ Fullscreen (for TV)</button>
-    <div class="hint">Nothing here saves to a server — this is a play/arrange layer only. It remembers your layout on THIS browser (localStorage) until cleared.</div>
   </div>
 
+</div>
+
+<button id="devModeBtn">Developer Mode</button>
+
+<div class="modalOverlay" id="pinOverlay">
+  <div class="modal">
+    <h3>Enter PIN</h3>
+    <div id="pinDots"></div>
+    <div id="keypad">
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button id="pinCancel">✕</button><button data-k="0">0</button><button id="pinBack">⌫</button>
+    </div>
+    <div id="pinError"></div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="cardOverlay">
+  <div class="modal" id="cardModal">
+    <h3>New Card</h3>
+    <img id="photoPreview" alt="">
+    <input type="text" id="cardLabelInput" placeholder="Job, truck #, crew...">
+    <input type="file" id="cardPhotoInput" accept="image/*">
+    <div class="actions">
+      <button id="cardCancel">Cancel</button>
+      <button class="primary" id="cardCreate">Create</button>
+    </div>
+  </div>
 </div>
 
 <script>
 (function(){
   "use strict";
+
+  var PIN = "1993";
 
   var DAYS = ["MON","TUE","WED","THU","FRI","SAT"];
   var JOB_ROWS = ["JAHNZ","LEJEUNE","FEHR","LINDBERGH","VANDER WOUDE","LINDQUIST"];
@@ -281,7 +389,7 @@
     grid.appendChild(lab);
     DAYS.forEach(function(){
       var c = document.createElement("div");
-      c.className = "cell dropzone";
+      c.className = "cell";
       grid.appendChild(c);
     });
   }
@@ -289,7 +397,6 @@
   JOB_ROWS.forEach(function(j){ addRow(j, false); });
   RESOURCE_ROWS.forEach(function(r){ addRow(r, true); });
 
-  // free-floating card layer sits on top of the grid
   var cardLayer = document.createElement("div");
   cardLayer.id = "cardLayer";
   grid.appendChild(cardLayer);
@@ -321,6 +428,77 @@
       now.toLocaleTimeString(undefined,{hour:'2-digit', minute:'2-digit'});
   }
   tick(); setInterval(tick, 30000);
+
+  // ---- lock / unlock ----
+  var unlocked = false;
+  var UNLOCK_KEY = "mdb_pb_dev_unlocked";
+  var devBtn = document.getElementById("devModeBtn");
+  var pinOverlay = document.getElementById("pinOverlay");
+  var pinDots = document.getElementById("pinDots");
+  var pinError = document.getElementById("pinError");
+  var pinBuffer = "";
+
+  function renderDots(){
+    pinDots.innerHTML = "";
+    for(var i=0;i<PIN.length;i++){
+      var d = document.createElement("span");
+      if(i<pinBuffer.length) d.className = "filled";
+      pinDots.appendChild(d);
+    }
+  }
+
+  function openPinModal(){
+    pinBuffer = "";
+    pinError.textContent = "";
+    renderDots();
+    pinOverlay.classList.add("show");
+  }
+  function closePinModal(){ pinOverlay.classList.remove("show"); }
+
+  devBtn.addEventListener("click", openPinModal);
+  document.getElementById("pinCancel").addEventListener("click", closePinModal);
+  document.getElementById("pinBack").addEventListener("click", function(){
+    pinBuffer = pinBuffer.slice(0,-1);
+    renderDots();
+  });
+  document.querySelectorAll("#keypad button[data-k]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      if(pinBuffer.length>=PIN.length) return;
+      pinBuffer += btn.dataset.k;
+      renderDots();
+      if(pinBuffer.length===PIN.length){
+        if(pinBuffer===PIN){
+          setUnlocked(true);
+          closePinModal();
+        } else {
+          pinError.textContent = "Wrong PIN — try again";
+          var overlay = pinOverlay;
+          overlay.querySelector(".modal").style.animation = "none";
+          setTimeout(function(){ pinBuffer=""; renderDots(); }, 350);
+        }
+      }
+    });
+  });
+
+  function setUnlocked(v){
+    unlocked = v;
+    document.body.classList.toggle("unlocked", v);
+    document.getElementById("editTools").style.display = v ? "block" : "none";
+    document.getElementById("viewOnlyNotice").style.display = v ? "none" : "block";
+    if(v){ try{ localStorage.setItem(UNLOCK_KEY,"1"); }catch(e){} }
+  }
+
+  document.getElementById("forgetDevice").addEventListener("click", function(){
+    if(!window.confirm("Re-lock editing on this device? You'll need the PIN again next time.")) return;
+    try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
+    setUnlocked(false);
+  });
+
+  (function initLock(){
+    var saved = false;
+    try{ saved = localStorage.getItem(UNLOCK_KEY)==="1"; }catch(e){}
+    setUnlocked(saved);
+  })();
 
   // ---- color wheel ----
   var wheel = document.getElementById("wheel");
@@ -382,6 +560,7 @@
     }
   }
   wheel.addEventListener("click", function(e){
+    if(!unlocked) return;
     var rect = wheel.getBoundingClientRect();
     var x = e.clientX-rect.left-R, y = e.clientY-rect.top-R;
     var dist = Math.sqrt(x*x+y*y);
@@ -395,7 +574,7 @@
   var selectedCard = null;
   var cardSeq = 0;
 
-  function makeCard(label, x, y, color){
+  function makeCard(label, x, y, color, photo){
     cardSeq++;
     var el = document.createElement("div");
     el.className = "card";
@@ -403,7 +582,11 @@
     el.style.top = y + "px";
     el.style.background = color;
     el.dataset.id = "c"+cardSeq;
-    el.innerHTML = '<span class="lbl">'+escapeHtml(label)+'</span><span class="x">✕</span>';
+    var html = "";
+    if(photo) html += '<img src="'+photo+'" alt="">';
+    html += '<span class="lbl">'+escapeHtml(label)+'</span><span class="x">✕</span>';
+    el.innerHTML = html;
+    if(photo) el.dataset.photo = photo;
     cardLayer.appendChild(el);
     wireCard(el);
     return el;
@@ -418,6 +601,7 @@
   function wireCard(el){
     el.querySelector(".x").addEventListener("click", function(ev){
       ev.stopPropagation();
+      if(!unlocked) return;
       el.remove();
       if(selectedCard===el) selectedCard=null;
       saveState();
@@ -425,6 +609,7 @@
 
     var dragging=false, offX=0, offY=0;
     el.addEventListener("pointerdown", function(e){
+      if(!unlocked) return;
       if(e.target.classList.contains("x")) return;
       selectCard(el);
       dragging = true;
@@ -444,7 +629,7 @@
       el.style.left = nx+"px";
       el.style.top = ny+"px";
     });
-    function endDrag(e){
+    function endDrag(){
       if(!dragging) return;
       dragging=false;
       el.style.cursor="grab";
@@ -465,18 +650,48 @@
     }
   });
 
+  // ---- new card modal ----
+  var cardOverlay = document.getElementById("cardOverlay");
+  var cardLabelInput = document.getElementById("cardLabelInput");
+  var cardPhotoInput = document.getElementById("cardPhotoInput");
+  var photoPreview = document.getElementById("photoPreview");
+  var pendingPhoto = null;
+
   document.getElementById("addCard").addEventListener("click", function(){
-    var label = window.prompt("Card label (job name, truck #, crew...)", "New");
-    if(label===null) return;
-    if(!label.trim()) label="—";
+    if(!unlocked) return;
+    cardLabelInput.value = "";
+    cardPhotoInput.value = "";
+    pendingPhoto = null;
+    photoPreview.style.display = "none";
+    cardOverlay.classList.add("show");
+    setTimeout(function(){ cardLabelInput.focus(); }, 50);
+  });
+  document.getElementById("cardCancel").addEventListener("click", function(){
+    cardOverlay.classList.remove("show");
+  });
+  cardPhotoInput.addEventListener("change", function(){
+    var f = cardPhotoInput.files[0];
+    if(!f) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      pendingPhoto = e.target.result;
+      photoPreview.src = pendingPhoto;
+      photoPreview.style.display = "block";
+    };
+    reader.readAsDataURL(f);
+  });
+  document.getElementById("cardCreate").addEventListener("click", function(){
+    var label = cardLabelInput.value.trim() || "—";
     var x = 40 + Math.random()*120;
     var y = 90 + Math.random()*120;
-    var card = makeCard(label.trim(), x, y, currentColor);
+    var card = makeCard(label, x, y, currentColor, pendingPhoto);
     selectCard(card);
     saveState();
+    cardOverlay.classList.remove("show");
   });
 
   document.getElementById("clearCards").addEventListener("click", function(){
+    if(!unlocked) return;
     if(!window.confirm("Remove all cards from the board?")) return;
     cardLayer.innerHTML = "";
     selectedCard = null;
@@ -493,6 +708,7 @@
   });
 
   penBtn.addEventListener("click", function(){
+    if(!unlocked) return;
     drawMode = !drawMode;
     penBtn.classList.toggle("active", drawMode);
     drawCanvas.style.pointerEvents = drawMode ? "auto" : "none";
@@ -502,7 +718,7 @@
 
   var drawing = false;
   drawCanvas.addEventListener("pointerdown", function(e){
-    if(!drawMode) return;
+    if(!drawMode || !unlocked) return;
     drawing = true;
     drawCanvas.setPointerCapture(e.pointerId);
     var r = drawCanvas.getBoundingClientRect();
@@ -522,6 +738,7 @@
   drawCanvas.addEventListener("pointercancel", endStroke);
 
   document.getElementById("clearDraw").addEventListener("click", function(){
+    if(!unlocked) return;
     dctx.clearRect(0,0,drawCanvas.width, drawCanvas.height);
     saveState();
   });
@@ -532,7 +749,7 @@
     else { document.documentElement.requestFullscreen().catch(function(){}); }
   });
 
-  // ---- persistence (local only, no server) ----
+  // ---- persistence (local only, no server; shared across devices is NOT part of phase 1) ----
   var STORE_KEY = "mdb_production_board_v1";
   function saveState(){
     try{
@@ -540,7 +757,8 @@
         return {
           label: el.querySelector(".lbl").textContent,
           x: el.style.left, y: el.style.top,
-          color: el.style.background
+          color: el.style.background,
+          photo: el.dataset.photo || null
         };
       });
       var state = { cards: cards, drawing: drawCanvas.toDataURL() };
@@ -553,7 +771,7 @@
       if(!raw) return;
       var state = JSON.parse(raw);
       (state.cards||[]).forEach(function(c){
-        var el = makeCard(c.label, parseInt(c.x,10)||40, parseInt(c.y,10)||90, c.color);
+        makeCard(c.label, parseInt(c.x,10)||40, parseInt(c.y,10)||90, c.color, c.photo);
       });
       if(state.drawing){
         var img = new Image();
