@@ -113,12 +113,13 @@
   .thinCell{ }
 
   #wbSide{
-    grid-row: 2 / span 6;
+    grid-row: 2 / span 8;
     grid-column: 7;
     display:flex;
     flex-direction:column;
     border-bottom:2px solid var(--wb-line);
   }
+  .sideRow{ display:flex; flex:6 1 0; min-height:0; }
   .sidePanel{
     flex:1;
     border-bottom:2px solid var(--wb-line);
@@ -128,6 +129,9 @@
     flex-direction:column;
     min-height:0;
   }
+  #panelUnavail{ flex:2 1 0; }
+  .sideRow .sidePanel{ border-bottom:none; border-right:2px solid var(--wb-line); }
+  .sideRow .sidePanel:last-child{ border-right:none; }
   .sidePanel:last-child{ border-bottom:none; }
   .sidePanel h3{
     margin:0 0 6px 0;
@@ -385,8 +389,10 @@
         <!-- job rows injected by JS -->
         <div id="wbSide">
           <div class="sidePanel" id="panelUnavail"><h3>Unavailable / Maintenance</h3><div class="lane"></div></div>
-          <div class="sidePanel" id="panelEquipment"><h3>Equipment</h3><div class="lane"></div></div>
-          <div class="sidePanel" id="panelTrailers"><h3>Trailers</h3><div class="lane"></div></div>
+          <div class="sideRow">
+            <div class="sidePanel" id="panelEquipment"><h3>Equipment</h3><div class="lane"></div></div>
+            <div class="sidePanel" id="panelTrailers"><h3>Trailers</h3><div class="lane"></div></div>
+          </div>
         </div>
       </div>
 
@@ -481,20 +487,22 @@
   var PIN = "1993";
 
   var JOB_ROWS = [
-    { name:"Jahnz", color:"blue", seed:["Ethan","Elvin","Alexis","Jose","Haas","Hicken"] },
-    { name:"LeJeune", color:"blue", seed:["Batman","Hayden","Gavin","Chase","Lube"] },
+    { name:"Jahnz", color:"blue", seed:["Ryan","Elvin","Alexis","Jose","Haas","Nick"] },
+    { name:"LeJeune", color:"blue", seed:["Eathan","Hayden","Gavin","Robin","Luke","Triax"] },
     { name:"Fehr", color:"green", seed:["Marvin"] },
-    { name:"Lindbergh", color:"blue", seed:["Blake","Andrew","Todd","Ramsey"] },
-    { name:"Vander Woude", color:"blue", seed:["Adnan","Velu","Dalber","Pedro","Frank","Ben"] },
-    { name:"Lindquist", color:"blue", seed:["RM","T96"] }
+    { name:"Lind", color:"green", seed:["Blake","Andrew","Todd","Batman","Jerry","T66H","Ramsey"] },
+    { name:"Vander Woude", color:"blue", seed:["Adrian","Yelsi","Dalber","Pedro","Frank","Ben","Jeremiah","The 35","Tilt Trailer","T650","Lily"] },
+    { name:"Lindquist", color:"blue", seed:["RM Crew","T66"] },
+    { name:"", color:"blue", seed:["Tony","The Mack"] },
+    { name:"", color:"blue", seed:["Kelly","Chris"] }
   ];
 
   var PANEL_SEEDS = {
-    unavail: ["Joe"],
-    equipment: ["Excavator","KX057-5","Kubota 430","CAT 918","Bobcat T770","MT52","Chipper"],
-    trailers: ["Tilt Trailer","Triax","T650","FG Trailer","Work Order","Haulmark","Dump Trailer"],
-    legend: ["Dumpster 15-4","Dumpster 15-2","Dumpster 18-1","Dumpster 18-2","Dumpster 20-1","Skyscraper 1","Skyscraper 2","Skyscraper 7","Jobsite Cam 2","Jobsite Cam 3","Jobsite Cam 6"],
-    trucks: ["The Mack","T66"],
+    unavail: ["Joe","Dumpster 15-1","Small Utility Trailer","Cody","Bo"],
+    equipment: ["CAT 918","MT52","Excavator","KX057-5","Bobcat 1770","Kubota 430","Mini Excavator"],
+    trailers: ["FG Trailer","Haulmark","Work Order","Dump Trailer","Black Deck Over","Tri-Axle Deck Over","Chipper"],
+    legend: ["Dumpster 15-2","Dumpster 10-2","Dumpster 10-3","Dumpster 20-2","Dumpster 10-1","Dumpster 20-1","Dumpster 15-4","Skyscraper 1","Skyscraper 2","Skyscraper 3","Skyscraper 4","Skyscraper 5","Skyscraper 6","Skyscraper 8","Jobsite Cam 1","Jobsite Cam 2","Jobsite Cam 3","Jobsite Cam 4","Jobsite Cam 5","Jobsite Cam 6"],
+    trucks: ["Corey"],
     vaca: ["Max"]
   };
 
