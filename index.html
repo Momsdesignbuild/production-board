@@ -637,9 +637,40 @@
   </div>
 </div>
 
+<div class="modalOverlay" id="confirmOverlay">
+  <div class="modal">
+    <h3 id="confirmMsg">Are you sure?</h3>
+    <div class="actions">
+      <button id="confirmNo">Cancel</button>
+      <button class="primary" id="confirmYes">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   "use strict";
+
+  // custom confirm modal — native window.confirm() blocks the page and is
+  // unreliable on TV/kiosk browsers, so every confirmation goes through this.
+  var confirmOverlay = document.getElementById("confirmOverlay");
+  var confirmMsgEl = document.getElementById("confirmMsg");
+  var confirmYesBtn = document.getElementById("confirmYes");
+  var confirmNoBtn = document.getElementById("confirmNo");
+  var confirmResolve = null;
+  function customConfirm(msg){
+    confirmMsgEl.textContent = msg;
+    confirmOverlay.classList.add("show");
+    return new Promise(function(resolve){ confirmResolve = resolve; });
+  }
+  confirmYesBtn.addEventListener("click", function(){
+    confirmOverlay.classList.remove("show");
+    if(confirmResolve) confirmResolve(true);
+  });
+  confirmNoBtn.addEventListener("click", function(){
+    confirmOverlay.classList.remove("show");
+    if(confirmResolve) confirmResolve(false);
+  });
 
   var PIN = "1993";
   var IS_DEV = location.pathname.replace(/\/+$/,"") === "/dev";
@@ -896,11 +927,13 @@
     if(v){ try{ localStorage.setItem(UNLOCK_KEY,"1"); }catch(e){} }
   }
   document.getElementById("forgetDevice").addEventListener("click", function(){
-    if(!window.confirm("Re-lock editing on this device? You'll need the PIN again next time.")) return;
-    try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
-    setUnlocked(false);
-    document.body.classList.add("needsDevPin");
-    openPinModal();
+    customConfirm("Re-lock editing on this device? You'll need the PIN again next time.").then(function(ok){
+      if(!ok) return;
+      try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
+      setUnlocked(false);
+      document.body.classList.add("needsDevPin");
+      openPinModal();
+    });
   });
   (function initLock(){
     if(!IS_DEV){
@@ -1153,14 +1186,18 @@
   });
   document.getElementById("clearCards").addEventListener("click", function(){
     if(!unlocked) return;
-    if(!window.confirm("Remove all cards from the board?")) return;
-    cardLayer.innerHTML=""; selectedCard=null; saveState();
+    customConfirm("Remove all cards from the board?").then(function(ok){
+      if(!ok) return;
+      cardLayer.innerHTML=""; selectedCard=null; saveState();
+    });
   });
   document.getElementById("resetSeed").addEventListener("click", function(){
     if(!unlocked) return;
-    if(!window.confirm("Replace the current layout with the starter example names?")) return;
-    cardLayer.innerHTML=""; selectedCard=null;
-    seedDefaults();
+    customConfirm("Replace the current layout with the starter example names?").then(function(ok){
+      if(!ok) return;
+      cardLayer.innerHTML=""; selectedCard=null;
+      seedDefaults();
+    });
   });
 
   // ---- pen / draw / erase / move — bottom expandable tool menu (dev only) ----
@@ -1225,8 +1262,10 @@
   drawCanvas.addEventListener("pointercancel", endStroke);
   document.getElementById("clearDraw").addEventListener("click", function(){
     if(!unlocked) return;
-    if(!window.confirm("Clear ALL hand-drawing on the whole board?")) return;
-    dctx.clearRect(0,0,drawCanvas.width, drawCanvas.height); saveState();
+    customConfirm("Clear ALL hand-drawing on the whole board?").then(function(ok){
+      if(!ok) return;
+      dctx.clearRect(0,0,drawCanvas.width, drawCanvas.height); saveState();
+    });
   });
 
   document.getElementById("fsBtn").addEventListener("click", function(){
