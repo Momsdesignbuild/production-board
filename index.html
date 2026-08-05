@@ -116,11 +116,29 @@
     padding:6px 8px;
   }
   .jobNameCell{
-    display:flex; align-items:center;
-    font-size:20px;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center;
     font-weight:700;
     color:var(--wb-blue);
+    overflow:hidden;
   }
+  .jobNameText{
+    display:none;
+    width:100%;
+    overflow:hidden;
+    white-space:normal;
+    word-break:break-word;
+    line-height:1.15;
+  }
+  .jobNameCell[data-filled="1"] .jobNameText{ display:block; }
+  .jobNameCell[data-filled="1"] .addJobRowBtn{ display:none; }
+  .addJobRowBtn{
+    width:auto; margin:0; padding:6px 10px; font-size:11px;
+    border-radius:20px; border:1.5px dashed #9fb8d6; background:transparent;
+    color:var(--wb-blue); font-family:-apple-system,sans-serif; font-weight:600;
+    cursor:pointer;
+  }
+  body:not(.unlocked) .addJobRowBtn{ visibility:hidden; }
   .jobNameCell[data-color="green"]{ color:var(--wb-green); }
   .laneCell{ position:relative; }
   .balCell{ display:flex; padding:0 !important; }
@@ -252,11 +270,11 @@
   #viewControls button{ width:auto; font-size:12px; padding:8px 12px; background:var(--panel); border-color:var(--line); }
 
   /* ---------- bottom expandable tool menu (dev only) ---------- */
-  #toolMenuWrap{ position:fixed; left:14px; bottom:14px; z-index:60; display:none; }
+  #toolMenuWrap{ position:fixed; right:14px; top:14px; z-index:60; display:none; }
   body.showDevTools #toolMenuWrap{ display:block; }
-  #toolMenuToggle{ width:48px; height:48px; border-radius:50%; background:var(--accent); color:#08131c; border:none; font-size:20px; font-weight:700; cursor:pointer; }
+  #toolMenuToggle{ width:48px; height:48px; border-radius:50%; background:#5fc2ff; color:#08131c; border:none; font-size:20px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.4); }
   #toolMenuItems{
-    position:absolute; bottom:58px; left:0; display:none; flex-direction:column; gap:8px;
+    position:absolute; top:58px; right:0; display:none; flex-direction:column; gap:8px;
     background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px; width:230px;
   }
   #toolMenuItems.open{ display:flex; }
@@ -300,7 +318,7 @@
     <div id="zoomWrap">
     <div id="whiteboard">
       <div id="wbTop">
-        <div class="jobsLbl">JOBS <button id="addJobBtn">+ Add Job</button></div>
+        <div class="jobsLbl">JOBS</div>
         <div class="dateLbl" id="boardDate"></div>
         <div class="smallHead">Dumpster</div>
         <div class="smallHead">Sign</div>
@@ -424,11 +442,10 @@
 <div class="modalOverlay" id="jobOverlay">
   <div class="modal">
     <h3>Add Job</h3>
-    <div class="hint" style="margin-bottom:10px;">Live pull from the Job Hours Tracker isn't wired up yet — for now, type the job name (should match BuilderTrend exactly).</div>
-    <input type="text" id="jobNameInput" placeholder="Job name...">
+    <div class="hint" style="margin-bottom:10px;">Live from the Job Hours Tracker — jobs currently in "Build" status.</div>
+    <div id="jobPickList"><div class="hint">Loading…</div></div>
     <div class="actions">
       <button id="jobCancel">Cancel</button>
-      <button class="primary" id="jobCreate">Add</button>
     </div>
   </div>
 </div>
@@ -507,6 +524,14 @@
     var nameCell = document.createElement("div");
     nameCell.className = "jobNameCell";
     nameCell.dataset.color = job.color;
+    var jobNameText = document.createElement("span");
+    jobNameText.className = "jobNameText";
+    nameCell.appendChild(jobNameText);
+    var addJobRowBtn = document.createElement("button");
+    addJobRowBtn.className = "addJobRowBtn";
+    addJobRowBtn.textContent = "+ Add Job";
+    addJobRowBtn.addEventListener("click", function(){ openJobPicker(idx); });
+    nameCell.appendChild(addJobRowBtn);
     row.appendChild(nameCell);
 
     var lane = document.createElement("div");
@@ -533,7 +558,7 @@
       balCell.appendChild(inp);
     });
     row.appendChild(balCell);
-    balInputs.push({ bid:bidInp, act:actInp, left:leftInp, nameCell:nameCell });
+    balInputs.push({ bid:bidInp, act:actInp, left:leftInp, nameCell:nameCell, jobNameText:jobNameText });
 
     wbMain.appendChild(row);
   });
@@ -830,6 +855,25 @@
     }
   });
 
+  // set a job name into a row's nameCell, auto-shrinking font so it never
+  // overflows the fixed-size cell — never stretches the template.
+  function fitText(el, container, maxPx, minPx){
+    maxPx = maxPx || 20; minPx = minPx || 9;
+    var size = maxPx;
+    el.style.fontSize = size + "px";
+    var guard = 0;
+    while(size > minPx && guard < 40 && (el.scrollWidth > container.clientWidth || el.scrollHeight > container.clientHeight)){
+      size -= 1;
+      el.style.fontSize = size + "px";
+      guard++;
+    }
+  }
+  function setJobName(slot, name){
+    slot.jobNameText.textContent = name;
+    slot.nameCell.dataset.filled = name ? "1" : "";
+    if(name){ fitText(slot.jobNameText, slot.nameCell, 20, 9); }
+  }
+
   function placeInLane(laneKey, label, offsetIndex, type){
     var laneEl = laneEls[laneKey];
     if(!laneEl) return;
@@ -888,27 +932,57 @@
     cardOverlay.classList.remove("show");
   });
 
-  // ---- add job modal (placeholder until live BuilderTrend/tracker pull is wired) ----
+  // ---- add job modal — live pull from the Job Hours Tracker via /api/jobs ----
   var jobOverlay = document.getElementById("jobOverlay");
-  var jobNameInput = document.getElementById("jobNameInput");
-  document.getElementById("addJobBtn").addEventListener("click", function(){
+  var jobPickList = document.getElementById("jobPickList");
+  var jobPickTargetIdx = null;
+
+  function openJobPicker(rowIdx){
     if(!unlocked) return;
-    jobNameInput.value = "";
+    jobPickTargetIdx = rowIdx;
+    jobPickList.innerHTML = '<div class="hint">Loading…</div>';
     jobOverlay.classList.add("show");
-    setTimeout(function(){ jobNameInput.focus(); }, 50);
-  });
+    fetch("/api/jobs").then(function(r){ return r.json(); }).then(function(data){
+      if(!data.jobs || !data.jobs.length){
+        jobPickList.innerHTML = '<div class="hint">No jobs found (or the live pull failed). Check back later.</div>';
+        return;
+      }
+      jobPickList.innerHTML = "";
+      var bySection = {};
+      data.jobs.forEach(function(j){
+        var sec = j.section || "Other";
+        if(!bySection[sec]) bySection[sec] = [];
+        bySection[sec].push(j);
+      });
+      Object.keys(bySection).forEach(function(sec){
+        var h = document.createElement("div");
+        h.className = "hint";
+        h.style.marginTop = "8px";
+        h.style.fontWeight = "700";
+        h.textContent = sec;
+        jobPickList.appendChild(h);
+        bySection[sec].forEach(function(j){
+          var btn = document.createElement("button");
+          btn.textContent = j.job;
+          btn.addEventListener("click", function(){
+            var slot = balInputs[jobPickTargetIdx];
+            if(slot){
+              setJobName(slot, j.job);
+              slot.bid.value = j.bid!=null ? j.bid.toFixed(1) : "";
+              slot.act.value = j.act!=null ? j.act.toFixed(1) : "";
+              slot.left.value = j.left!=null ? j.left.toFixed(1) : "";
+              saveState();
+            }
+            jobOverlay.classList.remove("show");
+          });
+          jobPickList.appendChild(btn);
+        });
+      });
+    }).catch(function(){
+      jobPickList.innerHTML = '<div class="hint">Live pull failed — check back later.</div>';
+    });
+  }
   document.getElementById("jobCancel").addEventListener("click", function(){ jobOverlay.classList.remove("show"); });
-  document.getElementById("jobCreate").addEventListener("click", function(){
-    var name = jobNameInput.value.trim();
-    if(!name) return;
-    var slot = balInputs.find(function(b){ return !b.nameCell.dataset.filled; });
-    if(slot){
-      slot.nameCell.textContent = name;
-      slot.nameCell.dataset.filled = "1";
-      saveState();
-    }
-    jobOverlay.classList.remove("show");
-  });
 
   document.getElementById("clearCards").addEventListener("click", function(){
     if(!unlocked) return;
@@ -922,7 +996,7 @@
     customConfirm("Clear the board back to blank?").then(function(ok){
       if(!ok) return;
       cardLayer.innerHTML=""; selectedCard=null;
-      balInputs.forEach(function(b){ b.bid.value=""; b.act.value=""; b.left.value=""; b.nameCell.textContent=""; delete b.nameCell.dataset.filled; });
+      balInputs.forEach(function(b){ b.bid.value=""; b.act.value=""; b.left.value=""; setJobName(b, ""); });
       seedDefaults();
     });
   });
@@ -1073,7 +1147,7 @@
       };
     });
     var jobs = balInputs.map(function(b){
-      return { name: b.nameCell.textContent, bid: b.bid.value, act: b.act.value, left: b.left.value };
+      return { name: b.jobNameText.textContent, bid: b.bid.value, act: b.act.value, left: b.left.value };
     });
     return { cards: cards, drawing: drawCanvas.toDataURL(), jobs: jobs };
   }
@@ -1091,8 +1165,7 @@
     }
     (state.jobs||[]).forEach(function(j,i){
       if(!balInputs[i]) return;
-      balInputs[i].nameCell.textContent = j.name||"";
-      if(j.name) balInputs[i].nameCell.dataset.filled = "1";
+      setJobName(balInputs[i], j.name||"");
       balInputs[i].bid.value = j.bid||"";
       balInputs[i].act.value = j.act||"";
       balInputs[i].left.value = j.left||"";
