@@ -6,6 +6,7 @@
 <title>MDB Production Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --bg:#0b0d10;
@@ -37,97 +38,107 @@
     height:100vh;
     width:100vw;
   }
-  #sidebar{ display:none; }
-  body.showTools #app{ grid-template-columns: 1fr 320px; }
-  body.showTools #sidebar{ display:block; }
-  #devUnlockOverlay{ display:none; }
-  body.needsDevPin #devUnlockOverlay{ display:flex; }
   #devModeBtn{ display:none !important; }
+
   /* ---------- BOARD WRAP ---------- */
   #boardWrap{
     position:relative;
-    overflow:auto;
-    padding:20px;
+    overflow:hidden;
+    padding:14px;
     background:var(--bg);
+    display:flex;
+    flex-direction:column;
   }
   h1{
-    font-size:clamp(18px,2vw,28px);
-    margin:0 0 12px 0;
+    font-size:clamp(16px,1.8vw,24px);
+    margin:0 0 8px 0;
     letter-spacing:0.5px;
     color:var(--text);
+    flex:none;
   }
   h1 span{color:var(--muted); font-weight:400; font-size:0.55em;}
 
   /* ---------- WHITEBOARD SHELL ---------- */
-  #zoomWrap{ position:relative; margin:0 auto; }
+  #zoomWrap{ position:relative; margin:0 auto; flex:1; min-height:0; }
   #whiteboard{
     position:relative;
     background:var(--wb-bg);
-    border:10px solid #2b2f33;
+    border:8px solid #2b2f33;
     border-radius:10px;
     box-shadow:0 10px 40px rgba(0,0,0,0.5);
-    min-width:2187px;
+    width:2000px;
+    height:1120px;
     color:#1a1a1a;
     font-family:'Kalam', -apple-system, sans-serif;
     transform-origin:0 0;
-    touch-action:none;
+    display:flex;
+    flex-direction:column;
   }
   .wb-font{ font-family:'Kalam', -apple-system, sans-serif; }
 
-  /* top strip: JOBS + date + Days/Dumpster/Camera/Sign/Unavail headers */
+  /* top strip */
   #wbTop{
     display:grid;
-    grid-template-columns: 190px 1fr 140px 90px 90px 90px 340px;
+    grid-template-columns: 170px 1fr 210px 190px;
     border-bottom:3px solid var(--wb-line);
+    flex:none;
   }
   #wbTop > div{
     border-right:2px solid var(--wb-line);
-    padding:10px 12px;
+    padding:8px 10px;
     font-weight:700;
     display:flex; align-items:center;
-    font-size:20px;
+    font-size:18px;
   }
   #wbTop > div:last-child{ border-right:none; }
-  #wbTop .jobsLbl{ font-size:26px; }
-  #wbTop .dateLbl{ color:var(--wb-green); font-size:24px; justify-content:flex-start; }
-  #wbTop .smallHead{ font-size:15px; justify-content:center; text-align:center; color:#333; font-family:-apple-system,sans-serif; font-weight:700; }
+  #wbTop .jobsLbl{ font-size:24px; justify-content:space-between; }
+  #wbTop .dateLbl{ color:var(--wb-green); font-size:20px; justify-content:flex-start; }
+  #balHeader{ display:flex; padding:0 !important; }
+  #balHeader div{ flex:1; text-align:center; font-size:15px; font-family:-apple-system,sans-serif; font-weight:800; color:#333; display:flex; align-items:center; justify-content:center; border-right:1px solid var(--wb-line); }
+  #balHeader div:last-child{ border-right:none; }
+  #wbTop .smallHead{ font-size:14px; justify-content:center; text-align:center; color:#333; font-family:-apple-system,sans-serif; font-weight:700; }
+  #addJobBtn{
+    width:auto; font-size:12px; padding:5px 9px; margin:0;
+    background:var(--wb-blue); color:#fff; border:none; border-radius:6px; font-family:-apple-system,sans-serif;
+  }
 
-  /* main body: left job rows, right side panel */
+  /* main body */
   #wbMain{
     display:grid;
-    grid-template-columns: 190px 1fr 140px 90px 90px 90px 340px;
+    grid-template-columns: 170px 1fr 210px 190px;
+    flex:1;
+    min-height:0;
   }
-  .jobRow{
-    display:contents;
-  }
+  .jobRow{ display:contents; }
   .jobRow > div{
     border-right:2px solid var(--wb-line);
     border-bottom:2px solid var(--wb-line);
-    min-height:96px;
-    padding:8px 10px;
+    padding:6px 8px;
   }
   .jobNameCell{
     display:flex; align-items:center;
-    font-size:24px;
+    font-size:20px;
     font-weight:700;
     color:var(--wb-blue);
   }
   .jobNameCell[data-color="green"]{ color:var(--wb-green); }
-  .jobNameCell input{
-    background:transparent; border:none; font:inherit; color:inherit;
-    width:100%; outline:none;
-  }
   .laneCell{ position:relative; }
-  .thinCell{ }
+  .balCell{ display:flex; padding:0 !important; }
+  .balCell input{
+    flex:1; min-width:0; border:none; border-right:1px solid var(--wb-line);
+    text-align:center; font-family:-apple-system,sans-serif; font-size:14px; font-weight:700;
+    background:transparent; color:#222; padding:0 2px;
+  }
+  .balCell input:last-child{ border-right:none; }
+  .balCell input::placeholder{ color:#bbb; font-weight:400; }
 
   #wbSide{
     grid-row: 1 / span 8;
-    grid-column: 7;
+    grid-column: 4;
     display:flex;
     flex-direction:column;
     border-bottom:2px solid var(--wb-line);
   }
-  .sideRow{ display:flex; flex:6 1 0; min-height:0; }
   .sidePanel{
     flex:1;
     border-bottom:2px solid var(--wb-line);
@@ -137,67 +148,48 @@
     flex-direction:column;
     min-height:0;
   }
-  #panelUnavail{ flex:2 1 0; }
-  .sideRow .sidePanel{ border-bottom:none; border-right:2px solid var(--wb-line); }
-  .sideRow .sidePanel:last-child{ border-right:none; }
   .sidePanel:last-child{ border-bottom:none; }
   .sidePanel h3{
     margin:0 0 6px 0;
-    font-size:14px;
+    font-size:13px;
     text-transform:uppercase;
     letter-spacing:0.5px;
     color:#333;
     font-family:-apple-system,sans-serif;
     font-weight:700;
   }
+  #vacaPanel h3{ color:var(--wb-red); }
   .sidePanel .lane{ flex:1; position:relative; }
 
-  /* bottom band: Orders + legend/trucks */
-  #wbBottom{
+  /* bottom asset bar — full width, edge to edge */
+  #assetBar{
     display:grid;
-    grid-template-columns: 190px 1fr 140px 90px 90px 90px 340px;
+    grid-template-columns: 0.8fr 0.8fr 0.8fr 1.2fr 1.2fr 1.2fr;
     border-top:3px solid var(--wb-line);
+    flex:none;
+    height:230px;
   }
-  #ordersPanel{ grid-column: 1 / 7; }
-  #legendTrucks{ grid-column: 7; }
-  #wbBottom > div{
+  #assetBar > div{
     border-right:2px solid var(--wb-line);
-    padding:12px;
-    min-height:220px;
-  }
-  #wbBottom > div:last-child{ border-right:none; }
-  #ordersPanel h3{ color:var(--wb-red); font-size:26px; margin:0 0 8px 0; text-align:center; }
-  #ordersPanel .orderLine{
-    font-size:18px; color:#333; text-align:center; margin-bottom:14px;
-  }
-  #ordersGrid{
-    display:grid;
-    grid-template-columns:repeat(6,1fr);
-    grid-auto-rows:28px;
-    border-top:1px solid #ccc;
-    border-left:1px solid #ccc;
-  }
-  #ordersGrid div{
-    border-right:1px solid #ccc;
-    border-bottom:1px solid #ccc;
-  }
-  #legendTrucks{
-    display:grid;
-    grid-template-columns: 1.3fr 1fr 1fr;
-  }
-  #legendTrucks .box{
+    padding:8px 10px;
     position:relative;
-    min-height:220px;
     display:flex;
     flex-direction:column;
-    padding:10px;
-    border-right:2px solid var(--wb-line);
+    min-width:0;
   }
-  #legendTrucks .box:last-child{ border-right:none; }
-  #legendTrucks h3{ font-size:10.5px; line-height:1.2; text-transform:uppercase; color:#333; font-family:-apple-system,sans-serif; font-weight:700; margin:0 0 6px 0; letter-spacing:0; }
-  #vacaBox h3{ color:var(--wb-red); }
+  #assetBar > div:last-child{ border-right:none; }
+  #assetBar h3{
+    margin:0 0 6px 0;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:#333;
+    font-family:-apple-system,sans-serif;
+    font-weight:700;
+  }
+  #assetBar .lane{ flex:1; position:relative; }
 
-  /* ---------- CARDS (free-floating layer over whole whiteboard) ---------- */
+  /* ---------- CARDS ---------- */
   #cardLayer{
     position:absolute;
     top:0; left:0;
@@ -214,280 +206,89 @@
     font-family:-apple-system,sans-serif;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
     border-radius:3px;
-    overflow:hidden;
+    overflow:visible;
     background:#3a3d42;
-    transform:rotate(var(--tilt,0deg));
+    transition:transform 0.12s ease;
+    z-index:1;
   }
-  .card.type-person{ width:78px; height:96px; }
-  .card.type-vehicle{ width:118px; height:72px; }
-  .card.selected{
-    outline:3px solid #1f5fa8;
-    outline-offset:2px;
+  .card:hover, .card:focus-within{ transform:scale(1.35); z-index:10; }
+  .card.type-person{ width:70px; height:86px; }
+  .card.type-vehicle{ width:100px; height:64px; }
+  .card.type-text{
+    min-width:60px; max-width:260px; height:auto; background:transparent; box-shadow:none;
+    padding:2px 4px; border:1px dashed transparent;
   }
-  .card .photo{
-    position:absolute; inset:0;
-    background-size:cover;
-    background-position:center;
-    pointer-events:none;
-  }
+  .card.type-text:hover{ border-color:var(--wb-line); }
+  .card.selected{ outline:3px solid #1f5fa8; outline-offset:2px; }
+  .card .photo{ position:absolute; inset:0; background-size:cover; background-position:center; pointer-events:none; overflow:hidden; border-radius:3px; }
   .card.type-person .photo{ background-color:#5b6570; }
   .card.type-vehicle .photo{ background-color:#7f8a92; }
   .card .bar{
-    position:absolute;
-    left:0; right:0; bottom:0;
-    padding:3px 4px;
-    font-weight:800;
-    color:#fff;
-    text-transform:uppercase;
-    letter-spacing:0.4px;
-    text-align:center;
-    pointer-events:none;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
+    position:absolute; left:0; right:0; bottom:0; padding:3px 4px;
+    font-weight:800; color:#fff; text-transform:uppercase; letter-spacing:0.4px;
+    text-align:center; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .card.type-person .bar{ background:rgba(10,10,10,0.88); font-size:10px; padding:4px 3px; }
-  .card.type-vehicle .bar{ background:linear-gradient(90deg,#2f7c8c,#1f5f6c); font-size:10px; }
-  .card .badgeD{
-    position:absolute; top:0; right:0;
-    width:0; height:0;
-    border-style:solid;
-    border-width:0 18px 18px 0;
-    border-color:transparent #fff transparent transparent;
-  }
-  .card .badgeD span{
-    position:absolute; top:1px; right:-16px;
-    font-size:9px; font-weight:900; color:#111;
-  }
-  .card .noPhoto{
-    position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
-    font-size:22px; color:rgba(255,255,255,0.5);
-    pointer-events:none;
+  .card.type-person .bar{ background:rgba(10,10,10,0.88); font-size:9px; padding:3px; }
+  .card.type-vehicle .bar{ background:linear-gradient(90deg,#2f7c8c,#1f5f6c); font-size:9px; }
+  .card .noPhoto{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; color:rgba(255,255,255,0.5); pointer-events:none; }
+  .card .textInput{
+    background:transparent; border:none; outline:none; color:#1a1a1a; font-family:'Kalam',sans-serif;
+    font-weight:700; width:100%; resize:none; overflow:hidden;
   }
   .card .x{
-    position:absolute;
-    top:-8px; right:-8px;
-    width:18px;height:18px;
-    border-radius:50%;
-    background:#1c2025;
-    color:#e8ecef;
-    border:1px solid var(--line);
-    font-size:11px;
-    line-height:16px;
-    text-align:center;
-    cursor:pointer;
-    z-index:3;
+    position:absolute; top:-8px; right:-8px; width:18px; height:18px; border-radius:50%;
+    background:#1c2025; color:#e8ecef; border:1px solid var(--line); font-size:11px; line-height:16px;
+    text-align:center; cursor:pointer; z-index:3;
   }
-  #drawCanvas{
-    position:absolute;
-    top:0; left:0;
-    z-index:5;
-  }
-  /* ---------- SIDEBAR ---------- */
-  #sidebar{
-    background:var(--panel);
-    border-left:1px solid var(--line);
-    padding:20px;
-    overflow-y:auto;
-  }
-  #sidebar h2{
-    font-size:13px;
-    text-transform:uppercase;
-    letter-spacing:1px;
-    color:var(--muted);
-    margin:24px 0 10px 0;
-  }
-  #sidebar h2:first-child{margin-top:0;}
-  button{
-    font:inherit;
-    cursor:pointer;
-    border-radius:8px;
-    border:1px solid var(--line);
-    background:var(--panel2);
-    color:var(--text);
-    padding:10px 12px;
-    font-size:14px;
-    width:100%;
-    margin-bottom:8px;
-  }
-  button:hover{border-color:var(--accent);}
-  button.primary{
-    background:var(--accent);
-    color:#08131c;
-    border-color:var(--accent);
-    font-weight:700;
-  }
-  button.active{
-    background:#ffb020;
-    color:#1a1200;
-    border-color:#ffb020;
-  }
-  #wheelWrap{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:10px;
-  }
-  #wheel{
-    border-radius:50%;
-    cursor:crosshair;
-    box-shadow:0 0 0 4px var(--panel2);
-  }
-  #swatch{
-    width:100%;
-    height:34px;
-    border-radius:8px;
-    border:1px solid var(--line);
-  }
-  input[type=range]{width:100%;}
-  .row{display:flex; gap:8px; align-items:center;}
-  .row label{font-size:12px; color:var(--muted); width:60px;}
-  .hint{
-    font-size:12px;
-    color:var(--muted);
-    line-height:1.5;
-    margin-top:6px;
-  }
-  #fsBtn{margin-top:10px;}
+  #drawCanvas{ position:absolute; top:0; left:0; z-index:5; }
 
-  #viewOnlyNotice{
-    text-align:center;
-    padding:10px 6px 16px;
-    color:var(--muted);
-    font-size:13px;
-  }
-  #devModeBtn{
-    position:fixed;
-    right:14px;
-    bottom:14px;
-    width:auto;
-    opacity:0.28;
-    font-size:11px;
-    padding:6px 10px;
-    z-index:50;
-    background:var(--panel);
-    border-color:var(--line);
-  }
-  #devModeBtn:hover{ opacity:1; }
-  body.unlocked #devModeBtn{ display:none; }
-  #viewControls{
-    position:fixed;
-    left:14px;
-    bottom:14px;
-    display:flex;
-    gap:8px;
-    z-index:50;
-  }
-  #viewControls button{
-    width:auto;
-    font-size:12px;
-    padding:8px 12px;
-    background:var(--panel);
-    border-color:var(--line);
-  }
+  /* ---------- SIDEBAR (legacy, hidden) ---------- */
+  #sidebar{ display:none; }
 
-  #zoomControls{
-    position:fixed;
-    right:14px;
-    top:14px;
-    display:flex;
-    gap:6px;
-    z-index:50;
-  }
-  #zoomControls button{
-    width:38px; height:38px;
-    padding:0;
-    font-size:20px;
-    font-weight:700;
-    background:var(--panel);
-    border-color:var(--line);
-    border-radius:50%;
-  }
+  #viewOnlyNotice{ text-align:center; padding:4px 6px 8px; color:var(--muted); font-size:12px; flex:none; }
+  #devModeBtn{ position:fixed; right:14px; bottom:14px; }
+
+  #viewControls{ position:fixed; left:14px; bottom:14px; display:flex; gap:8px; z-index:50; }
+  #viewControls button{ width:auto; font-size:12px; padding:8px 12px; background:var(--panel); border-color:var(--line); }
 
   /* ---------- bottom expandable tool menu (dev only) ---------- */
-  #toolMenuWrap{
-    position:fixed;
-    left:14px;
-    bottom:14px;
-    z-index:60;
-    display:none;
-  }
+  #toolMenuWrap{ position:fixed; left:14px; bottom:14px; z-index:60; display:none; }
   body.showDevTools #toolMenuWrap{ display:block; }
-  #toolMenuToggle{
-    width:48px; height:48px;
-    border-radius:50%;
-    background:var(--accent);
-    color:#08131c;
-    border:none;
-    font-size:20px;
-    font-weight:700;
-    cursor:pointer;
-  }
+  #toolMenuToggle{ width:48px; height:48px; border-radius:50%; background:var(--accent); color:#08131c; border:none; font-size:20px; font-weight:700; cursor:pointer; }
   #toolMenuItems{
-    position:absolute;
-    bottom:58px;
-    left:0;
-    display:none;
-    flex-direction:column;
-    gap:8px;
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:10px;
-    width:220px;
+    position:absolute; bottom:58px; left:0; display:none; flex-direction:column; gap:8px;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px; width:230px;
   }
   #toolMenuItems.open{ display:flex; }
   .toolRow{ display:flex; align-items:center; gap:8px; }
   .toolBtn{
-    width:40px; height:40px;
-    border-radius:50%;
-    background:var(--panel2);
-    border:1px solid var(--line);
-    color:var(--text);
-    font-size:17px;
-    cursor:pointer;
-    flex:none;
-    padding:0;
+    width:40px; height:40px; border-radius:50%; background:var(--panel2); border:1px solid var(--line);
+    color:var(--text); font-size:16px; cursor:pointer; flex:none; padding:0;
   }
   .toolBtn.active{ background:var(--accent); border-color:var(--accent); color:#08131c; }
   .toolRow input[type=range]{ flex:1; }
   .toolRow input[type=color]{ width:36px; height:36px; border:none; border-radius:8px; background:none; padding:0; flex:none; }
 
-  .modalOverlay{
-    position:fixed; inset:0;
-    background:rgba(0,0,0,0.72);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:100;
-  }
+  .modalOverlay{ position:fixed; inset:0; background:rgba(0,0,0,0.72); display:none; align-items:center; justify-content:center; z-index:100; }
   .modalOverlay.show{ display:flex; }
-  .modal{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:16px;
-    padding:28px;
-    width:320px;
-    text-align:center;
-  }
+  .modal{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px; width:320px; text-align:center; max-height:80vh; overflow-y:auto; }
   .modal h3{ margin:0 0 16px 0; font-size:18px; }
   #pinDots{ display:flex; gap:12px; justify-content:center; margin-bottom:20px; }
   #pinDots span{ width:16px;height:16px;border-radius:50%; border:2px solid var(--muted); }
   #pinDots span.filled{ background:var(--accent); border-color:var(--accent); }
   #keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  body.needsDevPin #pinCancel{ visibility:hidden; }
   #keypad button{ font-size:20px; padding:16px 0; margin:0; }
+  body.needsDevPin #pinCancel{ visibility:hidden; }
   #pinError{ color:#ff6a6a; font-size:12px; height:16px; margin-top:10px; }
-  #cardModal input[type=text]{
-    width:100%; padding:10px; border-radius:8px; border:1px solid var(--line);
-    background:var(--panel2); color:var(--text); font-size:14px; margin-bottom:12px;
-  }
+  #cardModal input[type=text]{ width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:14px; margin-bottom:12px; }
   #cardModal input[type=file]{ width:100%; margin-bottom:14px; font-size:12px; color:var(--muted); }
   #cardModal .actions{ display:flex; gap:8px; }
   #photoPreview{ width:100%; max-height:120px; object-fit:cover; border-radius:8px; margin-bottom:12px; display:none; }
+  .actions button{ margin:0; }
+  .hint{ font-size:12px; color:var(--muted); line-height:1.5; margin-top:6px; }
+  #jobPickList{ max-height:260px; overflow-y:auto; text-align:left; margin-bottom:12px; }
+  #jobPickList button{ display:block; width:100%; text-align:left; margin-bottom:4px; font-size:13px; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 <div id="app">
@@ -499,12 +300,9 @@
     <div id="zoomWrap">
     <div id="whiteboard">
       <div id="wbTop">
-        <div class="jobsLbl">JOBS</div>
+        <div class="jobsLbl">JOBS <button id="addJobBtn">+ Add Job</button></div>
         <div class="dateLbl" id="boardDate"></div>
-        <div class="smallHead">Days</div>
-        <div class="smallHead">Dumpster</div>
-        <div class="smallHead">Camera</div>
-        <div class="smallHead">Sign</div>
+        <div class="smallHead" id="balHeader"><div>BID</div><div>ACT</div><div>LEFT</div></div>
         <div class="smallHead">Unavailable / Maintenance</div>
       </div>
 
@@ -512,24 +310,17 @@
         <!-- job rows injected by JS -->
         <div id="wbSide">
           <div class="sidePanel" id="panelUnavail"><div class="lane"></div></div>
-          <div class="sideRow">
-            <div class="sidePanel" id="panelEquipment"><h3>Equipment</h3><div class="lane"></div></div>
-            <div class="sidePanel" id="panelTrailers"><h3>Trailers</h3><div class="lane"></div></div>
-          </div>
+          <div class="sidePanel" id="vacaPanel"><h3>VACA, SICK, OUT, ETC.</h3><div class="lane"></div></div>
         </div>
       </div>
 
-      <div id="wbBottom">
-        <div id="ordersPanel">
-          <h3>ORDERS</h3>
-          <div class="orderLine" id="orderLine"></div>
-          <div id="ordersGrid"></div>
-        </div>
-        <div id="legendTrucks">
-          <div class="box" id="panelLegend"><h3>Dumpster, Sign, Camera</h3><div class="lane"></div></div>
-          <div class="box" id="panelTrucks"><h3>Trucks</h3><div class="lane"></div></div>
-          <div class="box" id="vacaBox"><h3>VACA, SICK, OUT, ETC.</h3><div class="lane"></div></div>
-        </div>
+      <div id="assetBar">
+        <div id="panelDumpster"><h3>Dumpster</h3><div class="lane"></div></div>
+        <div id="panelSign"><h3>Sign</h3><div class="lane"></div></div>
+        <div id="panelCamera"><h3>Camera</h3><div class="lane"></div></div>
+        <div id="panelTrucks"><h3>Trucks</h3><div class="lane"></div></div>
+        <div id="panelEquipment"><h3>Equipment</h3><div class="lane"></div></div>
+        <div id="panelTrailers"><h3>Trailers</h3><div class="lane"></div></div>
       </div>
 
       <div id="cardLayer"></div>
@@ -539,32 +330,18 @@
 
   <div id="sidebar">
     <div id="editTools" style="display:none;">
-      <h2>Color Wheel</h2>
-      <div id="wheelWrap">
-        <canvas id="wheel" width="200" height="200"></canvas>
-        <div class="row" style="width:100%">
-          <label>Light</label>
-          <input type="range" id="light" min="15" max="90" value="70">
-        </div>
-        <div id="swatch"></div>
-      </div>
-      <div class="hint">Click a card first to recolor it, or just pick a color to use for the next new card / pen strokes.</div>
-
-      <h2>Cards</h2>
-      <button class="primary" id="addCard">+ Add Card</button>
-      <div class="hint">Label + optional photo. Drag anywhere on the board — exactly like moving a magnet.</div>
-
-      <h2>Board</h2>
+      <canvas id="wheel" width="200" height="200"></canvas>
+      <input type="range" id="light" min="15" max="90" value="70">
+      <div id="swatch"></div>
       <button id="clearCards">Clear All Cards</button>
       <button id="resetSeed">Reset to Blank Template</button>
-      <div class="hint">Nothing here saves to a server — this is a play/arrange layer only. It remembers your layout on THIS browser (localStorage) until cleared.</div>
       <div class="hint" style="margin-top:20px; cursor:pointer; text-decoration:underline;" id="forgetDevice">Forget this device (re-lock editing)</div>
     </div>
   </div>
 
 </div>
 
-<div class="modalOverlay" id="fsPrompt">
+<div class="modalOverlay show" id="fsPrompt">
   <div class="modal" style="cursor:pointer;" id="fsPromptInner">
     <h3>⛶ Enter Full Screen</h3>
     <div class="hint" style="margin-bottom:16px;">Hides the address bar and tabs — best for the TV.<br>Tap anywhere here to start.</div>
@@ -578,16 +355,12 @@
   <button id="fsBtn">⛶ Fullscreen</button>
 </div>
 
-<div id="zoomControls">
-  <button id="zoomInBtn" title="Zoom in">+</button>
-  <button id="zoomOutBtn" title="Zoom out">−</button>
-</div>
-
 <div id="toolMenuWrap">
   <button id="toolMenuToggle">☰</button>
   <div id="toolMenuItems">
     <div class="toolRow">
       <button class="toolBtn active" id="moveToolBtn" title="Move / Pan">🖐</button>
+      <button class="toolBtn" id="textToolBtn" title="Type text">🅣</button>
       <button class="toolBtn" id="penToolBtn" title="Pen">✏️</button>
       <button class="toolBtn" id="eraserToolBtn" title="Eraser">🧽</button>
       <button class="toolBtn" id="lockToolBtn" title="Re-lock editing">🔒</button>
@@ -599,6 +372,13 @@
     <div class="toolRow" id="eraserOptionsRow" style="display:none;">
       <span style="font-size:12px;color:var(--muted); white-space:nowrap;">Size</span>
       <input type="range" id="eraserWidth" min="10" max="60" value="26">
+    </div>
+    <div class="toolRow" id="textOptionsRow" style="display:none;">
+      <span style="font-size:12px;color:var(--muted); white-space:nowrap;">Font</span>
+      <input type="range" id="textSize" min="10" max="48" value="18">
+    </div>
+    <div class="toolRow">
+      <button class="primary" id="addCard" style="width:auto; border-radius:8px; font-size:12px;">+ Photo Card</button>
     </div>
     <div class="toolRow">
       <button id="clearDraw" style="width:auto; border-radius:8px; font-size:12px;">Clear ALL Drawing</button>
@@ -622,7 +402,7 @@
 
 <div class="modalOverlay" id="cardOverlay">
   <div class="modal" id="cardModal">
-    <h3>New Card</h3>
+    <h3>New Photo Card</h3>
     <img id="photoPreview" alt="">
     <div class="actions" style="margin-bottom:12px;">
       <button class="primary" id="typePerson">👤 Person</button>
@@ -633,6 +413,18 @@
     <div class="actions">
       <button id="cardCancel">Cancel</button>
       <button class="primary" id="cardCreate">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="jobOverlay">
+  <div class="modal">
+    <h3>Add Job</h3>
+    <div class="hint" style="margin-bottom:10px;">Live pull from the Job Hours Tracker isn't wired up yet — for now, type the job name (should match BuilderTrend exactly).</div>
+    <input type="text" id="jobNameInput" placeholder="Job name...">
+    <div class="actions">
+      <button id="jobCancel">Cancel</button>
+      <button class="primary" id="jobCreate">Add</button>
     </div>
   </div>
 </div>
@@ -687,31 +479,23 @@
   }catch(e){ deviceId = "unknown"; }
 
   var JOB_ROWS = [
-    { name:"", color:"blue", seed:[] },
-    { name:"", color:"blue", seed:[] },
-    { name:"", color:"blue", seed:[] },
-    { name:"", color:"blue", seed:[] },
-    { name:"", color:"blue", seed:[] },
-    { name:"", color:"blue", seed:[] },
-    { name:"", color:"blue", seed:[] },
-    { name:"", color:"blue", seed:[] }
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" }
   ];
-
-  var PANEL_SEEDS = {
-    unavail: [],
-    equipment: [],
-    trailers: [],
-    legend: [],
-    trucks: [],
-    vaca: []
-  };
 
   var whiteboard = document.getElementById("whiteboard");
   var wbMain = document.getElementById("wbMain");
   var boardWrap = document.getElementById("boardWrap");
 
   // ---- build job rows ----
-  var laneEls = {}; // key -> lane element
+  var laneEls = {};
+  var balInputs = []; // [{bid,act,left}] per row index
   JOB_ROWS.forEach(function(job, idx){
     var row = document.createElement("div");
     row.className = "jobRow";
@@ -727,28 +511,31 @@
     row.appendChild(lane);
     laneEls["job"+idx] = lane;
 
-    ["days","dumpster","camera","sign"].forEach(function(k){
-      var c = document.createElement("div");
-      c.className = "thinCell";
-      row.appendChild(c);
+    var balCell = document.createElement("div");
+    balCell.className = "balCell";
+    var bidInp = document.createElement("input"); bidInp.type="text"; bidInp.inputMode="decimal"; bidInp.placeholder="—";
+    var actInp = document.createElement("input"); actInp.type="text"; actInp.inputMode="decimal"; actInp.placeholder="—";
+    var leftInp = document.createElement("input"); leftInp.type="text"; leftInp.inputMode="decimal"; leftInp.placeholder="—";
+    [bidInp,actInp,leftInp].forEach(function(inp){
+      inp.readOnly = true;
+      inp.addEventListener("change", saveState);
+      balCell.appendChild(inp);
     });
+    row.appendChild(balCell);
+    balInputs.push({ bid:bidInp, act:actInp, left:leftInp, nameCell:nameCell });
 
     wbMain.appendChild(row);
-    // move the row's cells before #wbSide (contents are appended in order; side panel is already last child, fine since grid placement uses explicit column/row for wbSide)
   });
-  // ensure wbSide renders after rows in DOM but its grid-row/column is explicit, so order is fine.
   wbMain.appendChild(document.getElementById("wbSide"));
 
   laneEls["unavail"] = document.querySelector("#panelUnavail .lane");
+  laneEls["vaca"] = document.querySelector("#vacaPanel .lane");
+  laneEls["dumpster"] = document.querySelector("#panelDumpster .lane");
+  laneEls["sign"] = document.querySelector("#panelSign .lane");
+  laneEls["camera"] = document.querySelector("#panelCamera .lane");
+  laneEls["trucks"] = document.querySelector("#panelTrucks .lane");
   laneEls["equipment"] = document.querySelector("#panelEquipment .lane");
   laneEls["trailers"] = document.querySelector("#panelTrailers .lane");
-  laneEls["legend"] = document.querySelector("#panelLegend .lane");
-  laneEls["trucks"] = document.querySelector("#panelTrucks .lane");
-  laneEls["vaca"] = document.querySelector("#vacaBox .lane");
-
-  // orders sub-grid (decorative, matches the ruled empty grid under Orders)
-  var ordersGrid = document.getElementById("ordersGrid");
-  for(var i=0;i<24;i++){ ordersGrid.appendChild(document.createElement("div")); }
 
   // ---- free-floating overlay layers ----
   var cardLayer = document.getElementById("cardLayer");
@@ -758,7 +545,7 @@
   var dctx = drawCanvas.getContext("2d");
 
   function sizeLayers(){
-    var w = whiteboard.scrollWidth, h = whiteboard.scrollHeight;
+    var w = whiteboard.offsetWidth, h = whiteboard.offsetHeight;
     cardLayer.style.width = w + "px";
     cardLayer.style.height = h + "px";
     var prev = document.createElement("canvas");
@@ -771,102 +558,11 @@
   setTimeout(sizeLayers, 80);
   window.addEventListener("resize", sizeLayers);
 
-  // ---- zoom (pinch + fit-to-screen) ----
-  var zoomWrap = document.getElementById("zoomWrap");
-  var zoomScale = 1;
-  var ZOOM_MIN = 0.15, ZOOM_MAX = 3;
-
-  function applyZoom(){
-    whiteboard.style.transform = "scale(" + zoomScale + ")";
-    var w = whiteboard.offsetWidth, h = whiteboard.offsetHeight;
-    zoomWrap.style.width = (w * zoomScale) + "px";
-    zoomWrap.style.height = (h * zoomScale) + "px";
-  }
-
-  function fitToScreen(){
-    var availW = boardWrap.clientWidth - 40;
-    var availH = boardWrap.clientHeight - 90;
-    var natW = whiteboard.offsetWidth, natH = whiteboard.offsetHeight;
-    if(!natW || !natH) return;
-    zoomScale = Math.min(availW / natW, availH / natH);
-    zoomScale = Math.max(ZOOM_MIN, Math.min(zoomScale, 1));
-    applyZoom();
-  }
-
-  function scheduleFit(){
-    [0, 120, 350, 800, 1600, 3000].forEach(function(ms){ setTimeout(fitToScreen, ms); });
-  }
-  scheduleFit();
-  window.addEventListener("resize", scheduleFit);
-  document.addEventListener("fullscreenchange", scheduleFit);
-  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(scheduleFit); }
-  if(window.ResizeObserver){
-    new ResizeObserver(scheduleFit).observe(boardWrap);
-  }
-
-
-  // zoom anchored at a specific viewport point (finger position, cursor, or screen center)
-  // — keeps whatever content is under that point visually fixed while scale changes,
-  // instead of always growing/shrinking from the top-left corner.
-  function setZoomAnchored(newScale, anchorClientX, anchorClientY){
-    newScale = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newScale));
-    var wrapRect = boardWrap.getBoundingClientRect();
-    var anchorX = anchorClientX - wrapRect.left;
-    var anchorY = anchorClientY - wrapRect.top;
-    var contentX = (boardWrap.scrollLeft + anchorX) / zoomScale;
-    var contentY = (boardWrap.scrollTop + anchorY) / zoomScale;
-    zoomScale = newScale;
-    applyZoom();
-    boardWrap.scrollLeft = contentX * zoomScale - anchorX;
-    boardWrap.scrollTop = contentY * zoomScale - anchorY;
-  }
-  function zoomByButton(factor){
-    var r = boardWrap.getBoundingClientRect();
-    setZoomAnchored(zoomScale * factor, r.left + r.width/2, r.top + r.height/2);
-  }
-  document.getElementById("zoomInBtn").addEventListener("click", function(){ zoomByButton(1.15); });
-  document.getElementById("zoomOutBtn").addEventListener("click", function(){ zoomByButton(0.95); });
-
-  // pinch-to-zoom (two-finger touch), anchored at the midpoint between fingers
-  var pinchStartDist = null, pinchStartScale = 1;
-  function touchDist(t){
-    var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
-    return Math.sqrt(dx*dx + dy*dy);
-  }
-  function touchMid(t){
-    return { x: (t[0].clientX + t[1].clientX)/2, y: (t[0].clientY + t[1].clientY)/2 };
-  }
-  boardWrap.addEventListener("touchstart", function(e){
-    if(e.touches.length === 2){
-      pinchStartDist = touchDist(e.touches);
-      pinchStartScale = zoomScale;
-    }
-  }, { passive:true });
-  boardWrap.addEventListener("touchmove", function(e){
-    if(e.touches.length === 2 && pinchStartDist){
-      e.preventDefault();
-      var d = touchDist(e.touches);
-      var mid = touchMid(e.touches);
-      setZoomAnchored(pinchStartScale * (d / pinchStartDist), mid.x, mid.y);
-    }
-  }, { passive:false });
-  boardWrap.addEventListener("touchend", function(e){
-    if(e.touches.length < 2) pinchStartDist = null;
-  });
-  // ctrl/cmd + wheel (trackpad pinch on desktop), anchored at the cursor
-  boardWrap.addEventListener("wheel", function(e){
-    if(!e.ctrlKey) return;
-    e.preventDefault();
-    setZoomAnchored(zoomScale - e.deltaY * 0.01, e.clientX, e.clientY);
-  }, { passive:false });
-
   // ---- clock / date ----
   function tick(){
     var now = new Date();
-    document.getElementById("clock").textContent =
-      now.toLocaleTimeString(undefined,{hour:'2-digit', minute:'2-digit'});
-    document.getElementById("boardDate").textContent =
-      (now.getMonth()+1) + " / " + now.getDate() + " / " + now.getFullYear();
+    document.getElementById("clock").textContent = now.toLocaleTimeString(undefined,{hour:'2-digit', minute:'2-digit'});
+    document.getElementById("boardDate").textContent = (now.getMonth()+1) + " / " + now.getDate() + " / " + now.getFullYear();
   }
   tick(); setInterval(tick, 30000);
 
@@ -924,6 +620,7 @@
     document.body.classList.toggle("showDevTools", v && IS_DEV);
     document.getElementById("editTools").style.display = v ? "block" : "none";
     document.getElementById("viewOnlyNotice").style.display = (v || !IS_DEV) ? "none" : "block";
+    balInputs.forEach(function(b){ b.bid.readOnly=!v; b.act.readOnly=!v; b.left.readOnly=!v; });
     if(v){ try{ localStorage.setItem(UNLOCK_KEY,"1"); }catch(e){} }
   }
   document.getElementById("forgetDevice").addEventListener("click", function(){
@@ -954,14 +651,13 @@
     document.getElementById("fsPrompt").classList.add("show");
   })();
 
-  // ---- color wheel ----
+  // ---- color wheel (legacy, feeds currentColor default) ----
   var wheel = document.getElementById("wheel");
   var wctx = wheel.getContext("2d");
   var W = wheel.width, R = W/2;
   var lightSlider = document.getElementById("light");
   var currentColor = "#1f5fa8";
-  var currentHue = 48, currentSat = 85;
-
+  var currentHue = 205, currentSat = 90;
   function drawWheel(){
     var img = wctx.createImageData(W, W);
     var L = parseInt(lightSlider.value,10);
@@ -996,45 +692,50 @@
     return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
   }
   drawWheel();
-  lightSlider.addEventListener("input", function(){
-    drawWheel();
-    updateColor(currentHue, currentSat, parseInt(lightSlider.value,10));
-  });
-  function updateColor(h,s,l){
-    currentHue=h; currentSat=s;
-    currentColor = "hsl("+h.toFixed(0)+","+s.toFixed(0)+"%,"+l+"%)";
-    document.getElementById("swatch").style.background = currentColor;
-  }
-  wheel.addEventListener("click", function(e){
-    if(!unlocked) return;
-    var rect = wheel.getBoundingClientRect();
-    var x=e.clientX-rect.left-R, y=e.clientY-rect.top-R;
-    var dist=Math.sqrt(x*x+y*y);
-    if(dist>R) return;
-    var hue=(Math.atan2(y,x)*180/Math.PI+360)%360;
-    var sat=Math.min(100, dist/R*100);
-    updateColor(hue, sat, parseInt(lightSlider.value,10));
-  });
+  lightSlider.addEventListener("input", drawWheel);
 
   // ---- cards ----
   var selectedCard = null;
   var cardSeq = 0;
 
-  function makeCard(label, x, y, color, photo, type){
+  function makeCard(label, x, y, photo, type, fontSize){
     cardSeq++;
-    type = type === "v" ? "v" : "p";
+    type = (type==="v"||type==="p"||type==="t") ? type : "p";
     var el = document.createElement("div");
-    el.className = "card type-" + (type==="v" ? "vehicle" : "person");
+    el.className = "card type-" + (type==="v" ? "vehicle" : type==="t" ? "text" : "person");
     el.style.left = x+"px";
     el.style.top = y+"px";
-    el.style.setProperty("--tilt", ((cardSeq % 5) - 2) * 0.6 + "deg");
+    if(type!=="t") el.style.setProperty("--tilt", ((cardSeq % 5) - 2) * 0.6 + "deg");
     el.dataset.id = "c"+cardSeq;
     el.dataset.type = type;
     el.dataset.label = label;
+
+    if(type==="t"){
+      el.dataset.fontSize = fontSize || 18;
+      var ta = document.createElement("textarea");
+      ta.className = "textInput";
+      ta.value = label;
+      ta.rows = 1;
+      ta.style.fontSize = (fontSize||18)+"px";
+      ta.addEventListener("input", function(){
+        el.dataset.label = ta.value;
+        ta.style.height = "auto"; ta.style.height = ta.scrollHeight+"px";
+        saveState();
+      });
+      ta.addEventListener("pointerdown", function(ev){ if(unlocked) ev.stopPropagation(); });
+      el.appendChild(ta);
+      var xBtn = document.createElement("span");
+      xBtn.className = "x"; xBtn.textContent = "✕";
+      el.appendChild(xBtn);
+      cardLayer.appendChild(el);
+      setTimeout(function(){ ta.style.height="auto"; ta.style.height = ta.scrollHeight+"px"; }, 0);
+      wireCard(el);
+      return el;
+    }
+
     var html = '<div class="photo"' + (photo ? ' style="background-image:url(\''+photo+'\')"' : '') + '>' +
       (photo ? '' : '<span class="noPhoto">'+(type==="v"?"🚚":"👤")+'</span>') +
       '</div>';
-    if(type==="p") html += '<div class="badgeD"><span>D</span></div>';
     html += '<div class="bar">'+escapeHtml(label)+'</div><span class="x">✕</span>';
     el.innerHTML = html;
     if(photo) el.dataset.photo = photo;
@@ -1045,6 +746,7 @@
   function escapeHtml(s){
     var d=document.createElement("div"); d.textContent=s; return d.innerHTML;
   }
+
   var photoInput = document.createElement("input");
   photoInput.type = "file"; photoInput.accept = "image/*";
   photoInput.style.display = "none";
@@ -1074,31 +776,35 @@
       if(selectedCard===el) selectedCard=null;
       saveState();
     });
-    el.querySelector(".photo").addEventListener("click", function(ev){
-      if(!unlocked || el.dataset.photo) return;
-      ev.stopPropagation();
-      photoTargetCard = el;
-      photoInput.click();
-    });
+    var photoEl = el.querySelector(".photo");
+    if(photoEl){
+      photoEl.addEventListener("click", function(ev){
+        if(!unlocked || el.dataset.photo) return;
+        ev.stopPropagation();
+        photoTargetCard = el;
+        photoInput.click();
+      });
+    }
     var dragging=false, offX=0, offY=0;
     el.addEventListener("pointerdown", function(e){
       if(!unlocked) return;
       if(e.target.classList.contains("x")) return;
+      if(el.dataset.type==="t" && e.target.tagName==="TEXTAREA") return;
       selectCard(el);
       dragging=true;
       el.setPointerCapture(e.pointerId);
       var r = cardLayer.getBoundingClientRect();
-      offX = (e.clientX - r.left)/zoomScale - el.offsetLeft;
-      offY = (e.clientY - r.top)/zoomScale - el.offsetTop;
+      offX = (e.clientX - r.left) - el.offsetLeft;
+      offY = (e.clientY - r.top) - el.offsetTop;
       el.style.cursor="grabbing";
     });
     el.addEventListener("pointermove", function(e){
       if(!dragging) return;
       var r = cardLayer.getBoundingClientRect();
-      var nx = (e.clientX - r.left)/zoomScale - offX;
-      var ny = (e.clientY - r.top)/zoomScale - offY;
-      nx = Math.max(0, Math.min(nx, r.width/zoomScale-el.offsetWidth));
-      ny = Math.max(0, Math.min(ny, r.height/zoomScale-el.offsetHeight));
+      var nx = (e.clientX - r.left) - offX;
+      var ny = (e.clientY - r.top) - offY;
+      nx = Math.max(0, Math.min(nx, r.width-el.offsetWidth));
+      ny = Math.max(0, Math.min(ny, r.height-el.offsetHeight));
       el.style.left = nx+"px"; el.style.top = ny+"px";
     });
     function endDrag(){ if(!dragging) return; dragging=false; el.style.cursor="grab"; saveState(); }
@@ -1116,33 +822,22 @@
     }
   });
 
-  // place a card inside a given lane element's current on-screen rect (relative to whiteboard)
-  function placeInLane(laneKey, entry, offsetIndex){
+  function placeInLane(laneKey, label, offsetIndex, type){
     var laneEl = laneEls[laneKey];
     if(!laneEl) return;
-    var parts = entry.split("#");
-    var label = parts[0], type = parts[1] || "v";
-    var w = type==="p" ? 84 : 124;
+    var w = type==="p" ? 76 : 106;
     var perRow = 5;
     var wbRect = whiteboard.getBoundingClientRect();
     var lRect = laneEl.getBoundingClientRect();
     var col = offsetIndex % perRow, row = Math.floor(offsetIndex/perRow);
     var x = (lRect.left - wbRect.left) + 6 + col*w;
-    var y = (lRect.top - wbRect.top) + 6 + row*100;
-    makeCard(label, x, y, null, null, type);
+    var y = (lRect.top - wbRect.top) + 6 + row*94;
+    makeCard(label, x, y, null, type);
   }
 
-  function seedDefaults(){
-    JOB_ROWS.forEach(function(job, idx){
-      job.seed.forEach(function(entry, i){ placeInLane("job"+idx, entry, i); });
-    });
-    Object.keys(PANEL_SEEDS).forEach(function(key){
-      PANEL_SEEDS[key].forEach(function(entry, i){ placeInLane(key, entry, i); });
-    });
-    saveState();
-  }
+  function seedDefaults(){ saveState(); }
 
-  // ---- new card modal ----
+  // ---- new photo card modal ----
   var cardOverlay = document.getElementById("cardOverlay");
   var cardLabelInput = document.getElementById("cardLabelInput");
   var cardPhotoInput = document.getElementById("cardPhotoInput");
@@ -1179,11 +874,34 @@
     var label = cardLabelInput.value.trim() || "—";
     var x = 220 + Math.random()*160;
     var y = 60 + Math.random()*120;
-    var card = makeCard(label, x, y, null, pendingPhoto, pendingType);
+    var card = makeCard(label, x, y, pendingPhoto, pendingType);
     selectCard(card);
     saveState();
     cardOverlay.classList.remove("show");
   });
+
+  // ---- add job modal (placeholder until live BuilderTrend/tracker pull is wired) ----
+  var jobOverlay = document.getElementById("jobOverlay");
+  var jobNameInput = document.getElementById("jobNameInput");
+  document.getElementById("addJobBtn").addEventListener("click", function(){
+    if(!unlocked) return;
+    jobNameInput.value = "";
+    jobOverlay.classList.add("show");
+    setTimeout(function(){ jobNameInput.focus(); }, 50);
+  });
+  document.getElementById("jobCancel").addEventListener("click", function(){ jobOverlay.classList.remove("show"); });
+  document.getElementById("jobCreate").addEventListener("click", function(){
+    var name = jobNameInput.value.trim();
+    if(!name) return;
+    var slot = balInputs.find(function(b){ return !b.nameCell.dataset.filled; });
+    if(slot){
+      slot.nameCell.textContent = name;
+      slot.nameCell.dataset.filled = "1";
+      saveState();
+    }
+    jobOverlay.classList.remove("show");
+  });
+
   document.getElementById("clearCards").addEventListener("click", function(){
     if(!unlocked) return;
     customConfirm("Remove all cards from the board?").then(function(ok){
@@ -1193,24 +911,28 @@
   });
   document.getElementById("resetSeed").addEventListener("click", function(){
     if(!unlocked) return;
-    customConfirm("Replace the current layout with the starter example names?").then(function(ok){
+    customConfirm("Clear the board back to blank?").then(function(ok){
       if(!ok) return;
       cardLayer.innerHTML=""; selectedCard=null;
+      balInputs.forEach(function(b){ b.bid.value=""; b.act.value=""; b.left.value=""; b.nameCell.textContent=""; delete b.nameCell.dataset.filled; });
       seedDefaults();
     });
   });
 
-  // ---- pen / draw / erase / move — bottom expandable tool menu (dev only) ----
-  var drawMode=false, eraseMode=false;
+  // ---- pen / draw / erase / text / move — bottom expandable tool menu (dev only) ----
+  var drawMode=false, eraseMode=false, textMode=false;
   var moveBtn=document.getElementById("moveToolBtn");
   var penBtn=document.getElementById("penToolBtn");
   var eraserBtn=document.getElementById("eraserToolBtn");
+  var textBtn=document.getElementById("textToolBtn");
   var lockBtn=document.getElementById("lockToolBtn");
   var penWidth=document.getElementById("penWidth");
   var penColor=document.getElementById("penColor");
   var eraserWidth=document.getElementById("eraserWidth");
+  var textSize=document.getElementById("textSize");
   var penOptionsRow=document.getElementById("penOptionsRow");
   var eraserOptionsRow=document.getElementById("eraserOptionsRow");
+  var textOptionsRow=document.getElementById("textOptionsRow");
 
   penColor.addEventListener("input", function(){ currentColor = penColor.value; });
 
@@ -1219,31 +941,50 @@
   toolMenuToggle.addEventListener("click", function(){ toolMenuItems.classList.toggle("open"); });
 
   function refreshToolUI(){
-    moveBtn.classList.toggle("active", !drawMode && !eraseMode);
+    moveBtn.classList.toggle("active", !drawMode && !eraseMode && !textMode);
     penBtn.classList.toggle("active", drawMode);
     eraserBtn.classList.toggle("active", eraseMode);
+    textBtn.classList.toggle("active", textMode);
     penOptionsRow.style.display = drawMode ? "flex" : "none";
     eraserOptionsRow.style.display = eraseMode ? "flex" : "none";
+    textOptionsRow.style.display = textMode ? "flex" : "none";
     var active = drawMode || eraseMode;
     drawCanvas.style.pointerEvents = active ? "auto":"none";
     cardLayer.style.pointerEvents = active ? "none":"auto";
   }
-  function setDrawMode(v){ drawMode=v; if(v) eraseMode=false; refreshToolUI(); }
-  function setEraseMode(v){ eraseMode=v; if(v) drawMode=false; refreshToolUI(); }
-  function setMoveMode(){ drawMode=false; eraseMode=false; refreshToolUI(); }
+  function setDrawMode(v){ drawMode=v; if(v){ eraseMode=false; textMode=false; } refreshToolUI(); }
+  function setEraseMode(v){ eraseMode=v; if(v){ drawMode=false; textMode=false; } refreshToolUI(); }
+  function setTextMode(v){ textMode=v; if(v){ drawMode=false; eraseMode=false; } refreshToolUI(); }
+  function setMoveMode(){ drawMode=false; eraseMode=false; textMode=false; refreshToolUI(); }
 
   moveBtn.addEventListener("click", function(){ if(!unlocked) return; setMoveMode(); });
   penBtn.addEventListener("click", function(){ if(!unlocked) return; setDrawMode(!drawMode); });
   eraserBtn.addEventListener("click", function(){ if(!unlocked) return; setEraseMode(!eraseMode); });
+  textBtn.addEventListener("click", function(){ if(!unlocked) return; setTextMode(!textMode); });
   lockBtn.addEventListener("click", function(){ document.getElementById("forgetDevice").click(); toolMenuItems.classList.remove("open"); });
   drawCanvas.style.pointerEvents="none";
+
+  boardWrap.addEventListener("pointerdown", function(e){
+    if(!textMode || !unlocked) return;
+    if(e.target.closest(".card") || e.target.closest("#toolMenuWrap")) return;
+    var r = cardLayer.getBoundingClientRect();
+    var x = e.clientX - r.left, y = e.clientY - r.top;
+    var card = makeCard("Type here...", x, y, null, "t", parseInt(textSize.value,10));
+    selectCard(card);
+    var ta = card.querySelector("textarea");
+    ta.select();
+    ta.focus();
+    saveState();
+    setMoveMode();
+  });
+
   var drawing=false;
   drawCanvas.addEventListener("pointerdown", function(e){
     if((!drawMode && !eraseMode)||!unlocked) return;
     drawing=true;
     drawCanvas.setPointerCapture(e.pointerId);
     var r=drawCanvas.getBoundingClientRect();
-    dctx.beginPath(); dctx.moveTo((e.clientX-r.left)/zoomScale, (e.clientY-r.top)/zoomScale);
+    dctx.beginPath(); dctx.moveTo(e.clientX-r.left, e.clientY-r.top);
     if(eraseMode){
       dctx.globalCompositeOperation = "destination-out";
       dctx.lineWidth = parseInt(eraserWidth.value,10);
@@ -1255,7 +996,7 @@
   drawCanvas.addEventListener("pointermove", function(e){
     if(!drawing) return;
     var r=drawCanvas.getBoundingClientRect();
-    dctx.lineTo((e.clientX-r.left)/zoomScale, (e.clientY-r.top)/zoomScale); dctx.stroke();
+    dctx.lineTo(e.clientX-r.left, e.clientY-r.top); dctx.stroke();
   });
   function endStroke(){ if(drawing){ drawing=false; dctx.globalCompositeOperation="source-over"; saveState(); } }
   drawCanvas.addEventListener("pointerup", endStroke);
@@ -1288,22 +1029,51 @@
     fsPrompt.classList.remove("show");
   });
 
+  // ---- always fit the board to whatever screen it's on (no manual zoom) ----
+  var zoomWrap = document.getElementById("zoomWrap");
+  function fitToScreen(){
+    var availW = zoomWrap.clientWidth;
+    var availH = zoomWrap.clientHeight;
+    var natW = whiteboard.offsetWidth, natH = whiteboard.offsetHeight;
+    if(!natW || !natH || !availW || !availH) return;
+    var scale = Math.min(availW/natW, availH/natH);
+    whiteboard.style.transform = "scale(" + scale + ")";
+    whiteboard.style.position = "absolute";
+    whiteboard.style.left = ((availW - natW*scale)/2) + "px";
+    whiteboard.style.top = ((availH - natH*scale)/2) + "px";
+  }
+  function scheduleFit(){
+    [0, 120, 350, 800, 1600, 3000].forEach(function(ms){ setTimeout(fitToScreen, ms); });
+  }
+  scheduleFit();
+  window.addEventListener("resize", scheduleFit);
+  document.addEventListener("fullscreenchange", scheduleFit);
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(scheduleFit); }
+  if(window.ResizeObserver){ new ResizeObserver(scheduleFit).observe(zoomWrap); }
+
   // ---- persistence: Supabase is the shared source of truth; localStorage is just an offline fallback ----
-  var STORE_KEY = "mdb_production_board_v3";
+  var STORE_KEY = "mdb_production_board_v4";
   var applyingRemote = false;
   var lastPushedJSON = null;
 
   function currentStateObj(){
     var cards = Array.prototype.map.call(cardLayer.querySelectorAll(".card"), function(el){
-      return { label: el.dataset.label, x: el.style.left, y: el.style.top, type: el.dataset.type, photo: el.dataset.photo||null };
+      return {
+        label: el.dataset.label, x: el.style.left, y: el.style.top,
+        type: el.dataset.type, photo: el.dataset.photo||null,
+        fontSize: el.dataset.fontSize||null
+      };
     });
-    return { cards: cards, drawing: drawCanvas.toDataURL() };
+    var jobs = balInputs.map(function(b){
+      return { name: b.nameCell.textContent, bid: b.bid.value, act: b.act.value, left: b.left.value };
+    });
+    return { cards: cards, drawing: drawCanvas.toDataURL(), jobs: jobs };
   }
 
   function renderState(state){
     cardLayer.innerHTML = "";
     (state.cards||[]).forEach(function(c){
-      makeCard(c.label, parseInt(c.x,10)||40, parseInt(c.y,10)||90, null, c.photo, c.type);
+      makeCard(c.label, parseInt(c.x,10)||40, parseInt(c.y,10)||90, c.photo, c.type, c.fontSize);
     });
     dctx.clearRect(0,0,drawCanvas.width, drawCanvas.height);
     if(state.drawing){
@@ -1311,6 +1081,14 @@
       img.onload=function(){ dctx.drawImage(img,0,0); };
       img.src=state.drawing;
     }
+    (state.jobs||[]).forEach(function(j,i){
+      if(!balInputs[i]) return;
+      balInputs[i].nameCell.textContent = j.name||"";
+      if(j.name) balInputs[i].nameCell.dataset.filled = "1";
+      balInputs[i].bid.value = j.bid||"";
+      balInputs[i].act.value = j.act||"";
+      balInputs[i].left.value = j.left||"";
+    });
   }
 
   function saveState(){
@@ -1326,7 +1104,7 @@
 
   function loadState(){
     sb.from("board_state").select("data").eq("id",1).single().then(function(res){
-      if(res.data && res.data.data && res.data.data.cards && res.data.data.cards.length){
+      if(res.data && res.data.data && ((res.data.data.cards && res.data.data.cards.length) || (res.data.data.jobs && res.data.data.jobs.some(function(j){return j.name;})))){
         applyingRemote = true;
         renderState(res.data.data);
         applyingRemote = false;
