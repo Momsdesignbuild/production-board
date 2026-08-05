@@ -194,7 +194,7 @@
     border-right:2px solid var(--wb-line);
   }
   #legendTrucks .box:last-child{ border-right:none; }
-  #legendTrucks h3{ font-size:14px; text-transform:uppercase; color:#333; font-family:-apple-system,sans-serif; font-weight:700; margin:0 0 6px 0; }
+  #legendTrucks h3{ font-size:10.5px; line-height:1.2; text-transform:uppercase; color:#333; font-family:-apple-system,sans-serif; font-weight:700; margin:0 0 6px 0; letter-spacing:0; }
   #vacaBox h3{ color:var(--wb-red); }
 
   /* ---------- CARDS (free-floating layer over whole whiteboard) ---------- */
@@ -387,6 +387,73 @@
     border-color:var(--line);
   }
 
+  #zoomControls{
+    position:fixed;
+    right:14px;
+    top:14px;
+    display:flex;
+    gap:6px;
+    z-index:50;
+  }
+  #zoomControls button{
+    width:38px; height:38px;
+    padding:0;
+    font-size:20px;
+    font-weight:700;
+    background:var(--panel);
+    border-color:var(--line);
+    border-radius:50%;
+  }
+
+  /* ---------- bottom expandable tool menu (dev only) ---------- */
+  #toolMenuWrap{
+    position:fixed;
+    left:14px;
+    bottom:14px;
+    z-index:60;
+    display:none;
+  }
+  body.showDevTools #toolMenuWrap{ display:block; }
+  #toolMenuToggle{
+    width:48px; height:48px;
+    border-radius:50%;
+    background:var(--accent);
+    color:#08131c;
+    border:none;
+    font-size:20px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  #toolMenuItems{
+    position:absolute;
+    bottom:58px;
+    left:0;
+    display:none;
+    flex-direction:column;
+    gap:8px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:10px;
+    width:220px;
+  }
+  #toolMenuItems.open{ display:flex; }
+  .toolRow{ display:flex; align-items:center; gap:8px; }
+  .toolBtn{
+    width:40px; height:40px;
+    border-radius:50%;
+    background:var(--panel2);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-size:17px;
+    cursor:pointer;
+    flex:none;
+    padding:0;
+  }
+  .toolBtn.active{ background:var(--accent); border-color:var(--accent); color:#08131c; }
+  .toolRow input[type=range]{ flex:1; }
+  .toolRow input[type=color]{ width:36px; height:36px; border:none; border-radius:8px; background:none; padding:0; flex:none; }
+
   .modalOverlay{
     position:fixed; inset:0;
     background:rgba(0,0,0,0.72);
@@ -487,19 +554,6 @@
       <button class="primary" id="addCard">+ Add Card</button>
       <div class="hint">Label + optional photo. Drag anywhere on the board — exactly like moving a magnet.</div>
 
-      <h2>Pen</h2>
-      <button id="penToggle">✏️ Draw Mode</button>
-      <div class="row">
-        <label id="penWidthLabel">Width 4</label>
-        <input type="range" id="penWidth" min="1" max="16" value="4">
-      </div>
-      <button id="eraserToggle">🧽 Eraser</button>
-      <div class="row">
-        <label id="eraserWidthLabel">Size 26</label>
-        <input type="range" id="eraserWidth" min="10" max="60" value="26">
-      </div>
-      <button id="clearDraw">Clear ALL Drawing</button>
-
       <h2>Board</h2>
       <button id="clearCards">Clear All Cards</button>
       <button id="resetSeed">Reset to Blank Template</button>
@@ -522,6 +576,34 @@
 <button id="devModeBtn">Developer Mode</button>
 <div id="viewControls">
   <button id="fsBtn">⛶ Fullscreen</button>
+</div>
+
+<div id="zoomControls">
+  <button id="zoomInBtn" title="Zoom in">+</button>
+  <button id="zoomOutBtn" title="Zoom out">−</button>
+</div>
+
+<div id="toolMenuWrap">
+  <button id="toolMenuToggle">☰</button>
+  <div id="toolMenuItems">
+    <div class="toolRow">
+      <button class="toolBtn active" id="moveToolBtn" title="Move / Pan">🖐</button>
+      <button class="toolBtn" id="penToolBtn" title="Pen">✏️</button>
+      <button class="toolBtn" id="eraserToolBtn" title="Eraser">🧽</button>
+      <button class="toolBtn" id="lockToolBtn" title="Re-lock editing">🔒</button>
+    </div>
+    <div class="toolRow" id="penOptionsRow" style="display:none;">
+      <input type="color" id="penColor" value="#1f5fa8">
+      <input type="range" id="penWidth" min="1" max="16" value="4">
+    </div>
+    <div class="toolRow" id="eraserOptionsRow" style="display:none;">
+      <span style="font-size:12px;color:var(--muted); white-space:nowrap;">Size</span>
+      <input type="range" id="eraserWidth" min="10" max="60" value="26">
+    </div>
+    <div class="toolRow">
+      <button id="clearDraw" style="width:auto; border-radius:8px; font-size:12px;">Clear ALL Drawing</button>
+    </div>
+  </div>
 </div>
 
 <div class="modalOverlay" id="pinOverlay">
@@ -692,11 +774,36 @@
   }
 
 
-  // pinch-to-zoom (two-finger touch)
+  // zoom anchored at a specific viewport point (finger position, cursor, or screen center)
+  // — keeps whatever content is under that point visually fixed while scale changes,
+  // instead of always growing/shrinking from the top-left corner.
+  function setZoomAnchored(newScale, anchorClientX, anchorClientY){
+    newScale = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newScale));
+    var wrapRect = boardWrap.getBoundingClientRect();
+    var anchorX = anchorClientX - wrapRect.left;
+    var anchorY = anchorClientY - wrapRect.top;
+    var contentX = (boardWrap.scrollLeft + anchorX) / zoomScale;
+    var contentY = (boardWrap.scrollTop + anchorY) / zoomScale;
+    zoomScale = newScale;
+    applyZoom();
+    boardWrap.scrollLeft = contentX * zoomScale - anchorX;
+    boardWrap.scrollTop = contentY * zoomScale - anchorY;
+  }
+  function zoomByButton(factor){
+    var r = boardWrap.getBoundingClientRect();
+    setZoomAnchored(zoomScale * factor, r.left + r.width/2, r.top + r.height/2);
+  }
+  document.getElementById("zoomInBtn").addEventListener("click", function(){ zoomByButton(1.15); });
+  document.getElementById("zoomOutBtn").addEventListener("click", function(){ zoomByButton(0.95); });
+
+  // pinch-to-zoom (two-finger touch), anchored at the midpoint between fingers
   var pinchStartDist = null, pinchStartScale = 1;
   function touchDist(t){
     var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
     return Math.sqrt(dx*dx + dy*dy);
+  }
+  function touchMid(t){
+    return { x: (t[0].clientX + t[1].clientX)/2, y: (t[0].clientY + t[1].clientY)/2 };
   }
   boardWrap.addEventListener("touchstart", function(e){
     if(e.touches.length === 2){
@@ -708,19 +815,18 @@
     if(e.touches.length === 2 && pinchStartDist){
       e.preventDefault();
       var d = touchDist(e.touches);
-      zoomScale = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, pinchStartScale * (d / pinchStartDist)));
-      applyZoom();
+      var mid = touchMid(e.touches);
+      setZoomAnchored(pinchStartScale * (d / pinchStartDist), mid.x, mid.y);
     }
   }, { passive:false });
   boardWrap.addEventListener("touchend", function(e){
     if(e.touches.length < 2) pinchStartDist = null;
   });
-  // ctrl/cmd + wheel (trackpad pinch on desktop)
+  // ctrl/cmd + wheel (trackpad pinch on desktop), anchored at the cursor
   boardWrap.addEventListener("wheel", function(e){
     if(!e.ctrlKey) return;
     e.preventDefault();
-    zoomScale = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomScale - e.deltaY * 0.01));
-    applyZoom();
+    setZoomAnchored(zoomScale - e.deltaY * 0.01, e.clientX, e.clientY);
   }, { passive:false });
 
   // ---- clock / date ----
@@ -784,7 +890,7 @@
   function setUnlocked(v){
     unlocked = v;
     document.body.classList.toggle("unlocked", v);
-    document.body.classList.toggle("showTools", v && IS_DEV);
+    document.body.classList.toggle("showDevTools", v && IS_DEV);
     document.getElementById("editTools").style.display = v ? "block" : "none";
     document.getElementById("viewOnlyNotice").style.display = (v || !IS_DEV) ? "none" : "block";
     if(v){ try{ localStorage.setItem(UNLOCK_KEY,"1"); }catch(e){} }
@@ -820,7 +926,7 @@
   var wctx = wheel.getContext("2d");
   var W = wheel.width, R = W/2;
   var lightSlider = document.getElementById("light");
-  var currentColor = "hsl(48, 85%, 68%)";
+  var currentColor = "#1f5fa8";
   var currentHue = 48, currentSat = 85;
 
   function drawWheel(){
@@ -1057,37 +1163,42 @@
     seedDefaults();
   });
 
-  // ---- pen / draw / erase ----
+  // ---- pen / draw / erase / move — bottom expandable tool menu (dev only) ----
   var drawMode=false, eraseMode=false;
-  var penBtn=document.getElementById("penToggle");
-  var eraserBtn=document.getElementById("eraserToggle");
+  var moveBtn=document.getElementById("moveToolBtn");
+  var penBtn=document.getElementById("penToolBtn");
+  var eraserBtn=document.getElementById("eraserToolBtn");
+  var lockBtn=document.getElementById("lockToolBtn");
   var penWidth=document.getElementById("penWidth");
-  var penWidthLabel=document.getElementById("penWidthLabel");
+  var penColor=document.getElementById("penColor");
   var eraserWidth=document.getElementById("eraserWidth");
-  var eraserWidthLabel=document.getElementById("eraserWidthLabel");
-  penWidth.addEventListener("input", function(){ penWidthLabel.textContent="Width "+penWidth.value; });
-  eraserWidth.addEventListener("input", function(){ eraserWidthLabel.textContent="Size "+eraserWidth.value; });
+  var penOptionsRow=document.getElementById("penOptionsRow");
+  var eraserOptionsRow=document.getElementById("eraserOptionsRow");
 
-  function setDrawMode(v){
-    drawMode = v;
-    if(v) eraseMode = false;
+  penColor.addEventListener("input", function(){ currentColor = penColor.value; });
+
+  var toolMenuToggle=document.getElementById("toolMenuToggle");
+  var toolMenuItems=document.getElementById("toolMenuItems");
+  toolMenuToggle.addEventListener("click", function(){ toolMenuItems.classList.toggle("open"); });
+
+  function refreshToolUI(){
+    moveBtn.classList.toggle("active", !drawMode && !eraseMode);
     penBtn.classList.toggle("active", drawMode);
     eraserBtn.classList.toggle("active", eraseMode);
+    penOptionsRow.style.display = drawMode ? "flex" : "none";
+    eraserOptionsRow.style.display = eraseMode ? "flex" : "none";
     var active = drawMode || eraseMode;
     drawCanvas.style.pointerEvents = active ? "auto":"none";
     cardLayer.style.pointerEvents = active ? "none":"auto";
   }
-  function setEraseMode(v){
-    eraseMode = v;
-    if(v) drawMode = false;
-    penBtn.classList.toggle("active", drawMode);
-    eraserBtn.classList.toggle("active", eraseMode);
-    var active = drawMode || eraseMode;
-    drawCanvas.style.pointerEvents = active ? "auto":"none";
-    cardLayer.style.pointerEvents = active ? "none":"auto";
-  }
+  function setDrawMode(v){ drawMode=v; if(v) eraseMode=false; refreshToolUI(); }
+  function setEraseMode(v){ eraseMode=v; if(v) drawMode=false; refreshToolUI(); }
+  function setMoveMode(){ drawMode=false; eraseMode=false; refreshToolUI(); }
+
+  moveBtn.addEventListener("click", function(){ if(!unlocked) return; setMoveMode(); });
   penBtn.addEventListener("click", function(){ if(!unlocked) return; setDrawMode(!drawMode); });
   eraserBtn.addEventListener("click", function(){ if(!unlocked) return; setEraseMode(!eraseMode); });
+  lockBtn.addEventListener("click", function(){ document.getElementById("forgetDevice").click(); toolMenuItems.classList.remove("open"); });
   drawCanvas.style.pointerEvents="none";
   var drawing=false;
   drawCanvas.addEventListener("pointerdown", function(e){
