@@ -79,7 +79,7 @@
   /* top strip */
   #wbTop{
     display:grid;
-    grid-template-columns: 170px 1fr 210px 190px;
+    grid-template-columns: 170px 0.6fr 0.1333fr 0.1333fr 0.1334fr 210px 190px;
     border-bottom:3px solid var(--wb-line);
     flex:none;
   }
@@ -105,7 +105,7 @@
   /* main body */
   #wbMain{
     display:grid;
-    grid-template-columns: 170px 1fr 210px 190px;
+    grid-template-columns: 170px 0.6fr 0.1333fr 0.1333fr 0.1334fr 210px 190px;
     flex:1;
     min-height:0;
   }
@@ -134,7 +134,7 @@
 
   #wbSide{
     grid-row: 1 / span 8;
-    grid-column: 4;
+    grid-column: 7;
     display:flex;
     flex-direction:column;
     border-bottom:2px solid var(--wb-line);
@@ -164,7 +164,7 @@
   /* bottom asset bar — full width, edge to edge */
   #assetBar{
     display:grid;
-    grid-template-columns: 0.8fr 0.8fr 0.8fr 1.2fr 1.2fr 1.2fr;
+    grid-template-columns: 1fr 1fr 1fr;
     border-top:3px solid var(--wb-line);
     flex:none;
     height:230px;
@@ -302,6 +302,9 @@
       <div id="wbTop">
         <div class="jobsLbl">JOBS <button id="addJobBtn">+ Add Job</button></div>
         <div class="dateLbl" id="boardDate"></div>
+        <div class="smallHead">Dumpster</div>
+        <div class="smallHead">Sign</div>
+        <div class="smallHead">Camera</div>
         <div class="smallHead" id="balHeader"><div>BID</div><div>ACT</div><div>LEFT</div></div>
         <div class="smallHead">Unavailable / Maintenance</div>
       </div>
@@ -315,9 +318,6 @@
       </div>
 
       <div id="assetBar">
-        <div id="panelDumpster"><h3>Dumpster</h3><div class="lane"></div></div>
-        <div id="panelSign"><h3>Sign</h3><div class="lane"></div></div>
-        <div id="panelCamera"><h3>Camera</h3><div class="lane"></div></div>
         <div id="panelTrucks"><h3>Trucks</h3><div class="lane"></div></div>
         <div id="panelEquipment"><h3>Equipment</h3><div class="lane"></div></div>
         <div id="panelTrailers"><h3>Trailers</h3><div class="lane"></div></div>
@@ -515,6 +515,13 @@
     row.appendChild(lane);
     laneEls["job"+idx] = lane;
 
+    ["dumpster","sign","camera"].forEach(function(cat){
+      var cutout = document.createElement("div");
+      cutout.className = "laneCell cutoutCell";
+      row.appendChild(cutout);
+      laneEls["job"+idx+"-"+cat] = cutout;
+    });
+
     var balCell = document.createElement("div");
     balCell.className = "balCell";
     var bidInp = document.createElement("input"); bidInp.type="text"; bidInp.inputMode="decimal"; bidInp.placeholder="—";
@@ -534,9 +541,6 @@
 
   laneEls["unavail"] = document.querySelector("#panelUnavail .lane");
   laneEls["vaca"] = document.querySelector("#vacaPanel .lane");
-  laneEls["dumpster"] = document.querySelector("#panelDumpster .lane");
-  laneEls["sign"] = document.querySelector("#panelSign .lane");
-  laneEls["camera"] = document.querySelector("#panelCamera .lane");
   laneEls["trucks"] = document.querySelector("#panelTrucks .lane");
   laneEls["equipment"] = document.querySelector("#panelEquipment .lane");
   laneEls["trailers"] = document.querySelector("#panelTrailers .lane");
