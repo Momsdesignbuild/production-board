@@ -1,5 +1,10 @@
 {
   "rewrites": [
-    { "source": "/dev", "destination": "/index.html" }
-  ]
+    { "source": "/temp", "destination": "/temp.html" }
+  ],
+  "functions": {
+    "api/assets.js": { "maxDuration": 45 },
+    "api/migrate-photos.js": { "maxDuration": 60 },
+    "api/recover-photos.js": { "maxDuration": 60 }
+  }
 }

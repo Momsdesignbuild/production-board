@@ -1,6 +1,7 @@
 // Live read of the "Job Hours Tracker_2026.xlsx" -> "Weekly Job Tracking" sheet
-// via Microsoft Graph's Excel API. Returns jobs currently in "Build" status,
-// tagged by section (LANDSCAPING / R&C) exactly as they appear in the sheet.
+// via Microsoft Graph's Excel API. Returns jobs currently in "Build" or
+// "Scheduled" status, tagged by section (LANDSCAPING / R&C) and status
+// exactly as they appear in the sheet.
 //
 // Credentials come from Vercel project env vars, never from client code:
 //   MDB_TENANT_ID, MDB_CLIENT_ID, MDB_CLIENT_SECRET, MDB_DRIVE_ID
@@ -49,6 +50,7 @@ export default async function handler(req, res) {
 
     // Column layout (row index 1 = header row):
     // A=STATUS  B=DESIGNER  C=PM  D=CREW  E=JOB  F=%LEFT  G=BID  H=ACTUAL  I=BALANCE
+    const STATUSES = ["Build", "Scheduled"];
     let currentSection = null;
     const jobs = [];
     for (let i = 2; i < vals.length; i++) {
@@ -58,15 +60,21 @@ export default async function handler(req, res) {
         currentSection = colA;
         continue;
       }
-      if (colA === "Build") {
+      const status = STATUSES.find((s) => s.toLowerCase() === colA.toLowerCase());
+      if (status) {
         const job = (row[4] || "").toString().trim();
         if (!job) continue;
+        // G/H/I are formatted in Excel as [h]:mm duration cells, so Graph's
+        // valuesOnly returns the underlying serial value as a fraction of a
+        // 24-hour day (e.g. 1800:14 -> 75.0097222 "days"). Multiply by 24 to
+        // get the actual hour count these cells display.
         jobs.push({
           section: currentSection,
+          status: status,
           job: job,
-          bid: typeof row[6] === "number" ? row[6] : null,
-          act: typeof row[7] === "number" ? row[7] : null,
-          left: typeof row[8] === "number" ? row[8] : null,
+          bid: typeof row[6] === "number" ? row[6] * 24 : null,
+          act: typeof row[7] === "number" ? row[7] * 24 : null,
+          left: typeof row[8] === "number" ? row[8] * 24 : null,
         });
       }
     }
