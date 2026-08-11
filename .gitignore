@@ -1,1 +1,3 @@
 .vercel
+.env*
+tmp_upload/

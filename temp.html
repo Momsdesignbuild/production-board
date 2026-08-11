@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<title>MDB Production Board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MDB Production Board (Temp)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --bg:#0b0d10;
@@ -24,19 +23,13 @@
     --wb-red:#b3261e;
   }
   *{box-sizing:border-box;}
-  html,body{height:100%; overscroll-behavior:none;}
+  html,body{height:100%;}
   body{
     margin:0;
     background:var(--bg);
     color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     overflow:hidden;
-    overscroll-behavior:none;
-    /* native pinch-zoom on this page triggers a mobile-browser refresh bug
-       on at least one device we've tested on — kept off entirely (see the
-       viewport meta tag too). Pinch-to-resize a badge (a custom gesture,
-       independent of native zoom) is the supported way to see it bigger. */
-    touch-action:pan-x pan-y;
   }
   #app{
     display:grid;
@@ -188,7 +181,7 @@
   /* bottom asset bar — full width, edge to edge */
   #assetBar{
     display:grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: 1fr 1fr 1fr;
     border-top:3px solid var(--wb-line);
     flex:none;
     height:230px;
@@ -245,11 +238,9 @@
      onto sibling elements (other cards, buttons, page text) even though the
      dragged card itself is user-select:none. */
   body.dragging-active{ user-select:none; -webkit-user-select:none; }
-  /* --pz is the badge's own persistent pinch-to-resize scale (default 1) —
-     the only thing that ever changes a card's size now. Hovering/focus no
-     longer scales it up at all, just brings it to the front so an
-     overlapped badge can still be seen/clicked. */
-  .card:hover, .card:focus-within{ z-index:10; }
+  /* --pz is the badge's own persistent pinch-to-resize scale (default 1);
+     hover multiplies on top of it rather than replacing it. */
+  .card:hover, .card:focus-within{ transform:scale(calc(var(--pz, 1) * 1.35)); z-index:10; }
   .card.type-person, .card.type-vehicle{
     width:88px; height:auto; display:flex; flex-direction:column;
     background:#1c2025; box-shadow:0 3px 8px rgba(0,0,0,0.4);
@@ -265,7 +256,7 @@
     background-size:cover; background-position:center; pointer-events:none;
     overflow:hidden; border-radius:3px 3px 0 0;
   }
-  .card.type-person .photo{ background-color:#5b6570; background-position:center top; }
+  .card.type-person .photo{ background-color:#5b6570; }
   .card.type-vehicle .photo{ background-color:#7f8a92; }
   .card .bar{
     position:static; height:20px; padding:0 4px;
@@ -278,23 +269,16 @@
   }
   .card.type-person .bar{ background:rgba(10,10,10,0.88); }
   .card.type-vehicle .bar{ background:linear-gradient(90deg,#2f7c8c,#1f5f6c); }
-  .card.noBar .bar{ display:none; }
   .card .noPhoto{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; color:rgba(255,255,255,0.5); pointer-events:none; }
   .card .textDisplay{
     font-weight:700; white-space:pre-wrap; word-break:break-word; line-height:1.2;
     pointer-events:none;
   }
-  /* shrink/grow controls — mouse-only equivalent of pinch-to-resize, since a
-     mouse has no pinch gesture. Hidden until hovered so they don't clutter
-     100+ badges at once. */
-  .card .minimizeBtn, .card .maximizeBtn{
-    display:none; position:absolute; top:-8px; width:18px; height:18px; border-radius:50%;
-    background:#1c2025; color:#e8ecef; border:1px solid var(--line); font-size:12px; line-height:16px;
+  .card .x{
+    position:absolute; top:-8px; right:-8px; width:18px; height:18px; border-radius:50%;
+    background:#1c2025; color:#e8ecef; border:1px solid var(--line); font-size:11px; line-height:16px;
     text-align:center; cursor:pointer; z-index:3;
   }
-  .card .minimizeBtn{ left:-8px; }
-  .card .maximizeBtn{ right:-8px; }
-  .card:hover .minimizeBtn, .card:hover .maximizeBtn{ display:block; }
   #drawCanvas{ position:absolute; top:0; left:0; z-index:5; touch-action:none; }
 
   /* ---------- badge tray: the single home for every badge not currently
@@ -318,23 +302,16 @@
     box-shadow:0 -6px 24px rgba(0,0,0,0.5);
   }
   #trayPanel.open{ transform:translateY(0); }
-  #trayHeader{ display:flex; align-items:center; gap:12px; margin-bottom:10px; flex:none; }
-  #trayHeader h3{ margin:0; font-size:16px; flex:none; }
-  #traySearchInput{
-    flex:1; max-width:320px; border-radius:20px; border:1px solid var(--line);
-    background:var(--panel2); color:var(--text); font-size:13px; padding:7px 14px;
+  #trayHeader{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex:none; }
+  #trayHeader h3{ margin:0; font-size:16px; }
+  #syncAllBtn{ width:auto; margin:0; padding:7px 14px; font-size:12px; border-radius:8px; background:var(--accent); border-color:var(--accent); color:#08131c; font-weight:700; }
+  #syncAllBtn:disabled{ opacity:0.6; }
+  #trayFilters{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; flex:none; }
+  .trayFilterBtn{
+    width:auto; margin:0; padding:6px 14px; font-size:12px; border-radius:20px;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
-  #traySearchInput::placeholder{ color:var(--muted); }
-  #addBadgeBtn{ margin-left:auto; }
-  #loadBoardBtn, #saveBoardBtn{
-    width:auto; margin:0; padding:4px 10px; font-size:12px; border-radius:8px;
-    background:var(--panel2); border:1px solid var(--line); color:var(--text); font-weight:600;
-    vertical-align:middle;
-  }
-  #saveBoardBtn{ background:var(--accent); border-color:var(--accent); color:#08131c; }
-  #loadBoardBtn:disabled, #saveBoardBtn:disabled{ opacity:0.6; }
-  body:not(.unlocked) #saveBoardBtn{ display:none; }
-  #addBadgeBtn{ width:auto; margin:0; padding:7px 14px; font-size:12px; border-radius:8px; background:var(--accent); border-color:var(--accent); color:#08131c; font-weight:700; }
+  .trayFilterBtn.active{ background:var(--accent); border-color:var(--accent); color:#08131c; font-weight:700; }
   #trayGridRow{ display:flex; align-items:stretch; gap:10px; flex:1; min-height:0; }
   #trayGrid{
     flex:1; min-height:0; overflow:hidden; display:flex; flex-wrap:wrap;
@@ -372,13 +349,6 @@
   #sidebar{ display:none; }
 
   #viewOnlyNotice{ text-align:center; padding:4px 6px 8px; color:var(--muted); font-size:12px; flex:none; }
-  #devModeBtn{
-    display:none; position:fixed; right:14px; top:14px; z-index:60;
-    width:48px; height:48px; border-radius:50%; background:#5fc2ff; color:#08131c;
-    border:none; font-size:20px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.4);
-    align-items:center; justify-content:center; padding:0;
-  }
-  body:not(.unlocked) #devModeBtn{ display:flex; }
 
   #exitFsBtn{
     display:none; position:fixed; left:14px; top:14px; z-index:70;
@@ -443,7 +413,7 @@
 <div id="app">
 
   <div id="boardWrap">
-    <h1>MDB Production Board <span id="clock"></span> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button></h1>
+    <h1>MDB Production Board <span id="clock"></span></h1>
     <div id="viewOnlyNotice">Viewing live — editing is locked on this device.</div>
 
     <div id="zoomWrap">
@@ -472,9 +442,6 @@
         <div id="panelTrucks"><h3>Trucks</h3><div class="lane"></div></div>
         <div id="panelEquipment"><h3>Equipment</h3><div class="lane"></div></div>
         <div id="panelTrailers"><h3>Trailers</h3><div class="lane"></div></div>
-        <div id="panelDumpster"><h3>Dumpster</h3><div class="lane"></div></div>
-        <div id="panelSigns"><h3>Signs</h3><div class="lane"></div></div>
-        <div id="panelCamera"><h3>Camera</h3><div class="lane"></div></div>
       </div>
 
       <div id="cardLayer"></div>
@@ -487,7 +454,6 @@
       <canvas id="wheel" width="200" height="200"></canvas>
       <input type="range" id="light" min="15" max="90" value="70">
       <div id="swatch"></div>
-      <div class="hint" style="margin-top:20px; cursor:pointer; text-decoration:underline;" id="forgetDevice">Forget this device (re-lock editing)</div>
     </div>
   </div>
 
@@ -502,7 +468,6 @@
   </div>
 </div>
 
-<button id="devModeBtn" title="Unlock editing">🔒</button>
 <button id="exitFsBtn" title="Exit full screen">⛶</button>
 
 <div id="toolMenuWrap">
@@ -513,7 +478,6 @@
       <button class="toolBtn" id="textToolBtn" title="Type text">🅣</button>
       <button class="toolBtn" id="penToolBtn" title="Pen">✏️</button>
       <button class="toolBtn" id="eraserToolBtn" title="Eraser">🧽</button>
-      <button class="toolBtn" id="lockToolBtn" title="Re-lock editing">🔒</button>
     </div>
     <div class="toolRow" id="penOptionsRow" style="display:none;">
       <input type="color" id="penColor" value="#1f5fa8">
@@ -539,8 +503,16 @@
 <div id="trayPanel">
   <div id="trayHeader">
     <h3>Badge Tray</h3>
-    <input type="text" id="traySearchInput" placeholder="Search badges…">
-    <button id="addBadgeBtn">➕ Add Badge</button>
+    <button id="syncAllBtn">🔄 Pull Badges</button>
+  </div>
+  <div id="trayFilters">
+    <button class="trayFilterBtn active" data-filter="all">All</button>
+    <button class="trayFilterBtn" data-filter="employee">Employee</button>
+    <button class="trayFilterBtn" data-filter="truck">Trucks</button>
+    <button class="trayFilterBtn" data-filter="equipment">Equipment &amp; Machinery</button>
+    <button class="trayFilterBtn" data-filter="trailer">Trailers</button>
+    <button class="trayFilterBtn" data-filter="skyscraper">Skyscrapers</button>
+    <button class="trayFilterBtn" data-filter="camera">Cameras</button>
   </div>
   <div id="trayGridRow">
     <button class="trayNavBtn" id="trayPrevBtn">‹</button>
@@ -550,49 +522,17 @@
   <div id="trayPageLabel"></div>
 </div>
 
-<div class="modalOverlay" id="pinOverlay">
-  <div class="modal">
-    <h3>Enter PIN</h3>
-    <div id="pinDots"></div>
-    <div id="keypad">
-      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
-      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
-      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
-      <button id="pinCancel">✕</button><button data-k="0">0</button><button id="pinBack">⌫</button>
-    </div>
-    <div id="pinError"></div>
-  </div>
-</div>
-
 <div class="modalOverlay" id="badgeDetailOverlay">
   <div class="modal" style="position:relative; width:280px;">
     <span class="x" id="badgeDetailCloseX" style="position:absolute; top:-10px; right:-10px;">✕</span>
-    <div id="badgeDetailPhotoWrap" style="width:100%; height:140px; border-radius:8px; overflow:hidden; background:#1c2025; margin-bottom:14px; position:relative; cursor:pointer;">
+    <div id="badgeDetailPhotoWrap" style="width:100%; height:140px; border-radius:8px; overflow:hidden; background:#1c2025; margin-bottom:14px; position:relative;">
       <div id="badgeDetailPhoto" style="width:100%; height:100%; background-size:cover; background-position:center;"></div>
-      <div id="badgeDetailPhotoHint" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.35); color:#fff; font-size:12px; font-weight:600;">Tap to change photo</div>
     </div>
-    <input type="file" id="badgeDetailPhotoInput" accept="image/*" style="display:none;">
-    <input type="text" id="badgeDetailName" placeholder="Name" style="width:100%; margin-bottom:10px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:14px; padding:8px; font-family:inherit;">
+    <h3 id="badgeDetailName" style="margin:0 0 10px 0;"></h3>
     <textarea id="badgeDetailDesc" placeholder="Add a description..." style="width:100%; min-height:70px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:13px; padding:8px; font-family:inherit; resize:vertical;"></textarea>
-    <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--text); cursor:pointer;">
-      <input type="checkbox" id="badgeDetailHideBar"> Hide name bar (rare — only if this photo alone is enough)
-    </label>
     <div class="actions" style="margin-top:14px;">
       <button id="badgeDetailDelete" style="background:#3a1f1f; border-color:#6b2b2b;">Delete</button>
       <button id="badgeDetailToTray">Move to Tray</button>
-    </div>
-  </div>
-</div>
-
-<div class="modalOverlay" id="addBadgeOverlay">
-  <div class="modal" style="position:relative; width:280px;">
-    <span class="x" id="addBadgeCloseX" style="position:absolute; top:-10px; right:-10px;">✕</span>
-    <h3 style="margin:0 0 14px 0;">Add Badge</h3>
-    <input type="text" id="addBadgeName" placeholder="Name" style="width:100%; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:14px; padding:8px; font-family:inherit;">
-    <div class="hint" style="margin-top:8px;">Add a photo afterward by tapping the badge in the tray.</div>
-    <div class="actions" style="margin-top:14px;">
-      <button id="addBadgeCancel">Cancel</button>
-      <button class="primary" id="addBadgeCreate">Add to Tray</button>
     </div>
   </div>
 </div>
@@ -601,7 +541,7 @@
   <div class="modal" style="position:relative;">
     <span class="x" id="jobCloseX" style="position:absolute; top:-10px; right:-10px;">✕</span>
     <h3>Add Job</h3>
-    <div class="hint" style="margin-bottom:10px;">Live from the Job Hours Tracker — jobs currently in "Build" or "Scheduled" status.</div>
+    <div class="hint" style="margin-bottom:10px;">Live from the Job Hours Tracker — jobs currently in "Build" status.</div>
     <div id="jobPickList"><div class="hint">Loading…</div></div>
   </div>
 </div>
@@ -640,85 +580,6 @@
 (function(){
   "use strict";
 
-  // blocks the browser's native pull-to-refresh. CSS overscroll-behavior
-  // (set on html/body) doesn't reliably stop this on every mobile browser
-  // on its own — this is the actual, universally-supported way to kill it:
-  // preventDefault() a single-finger downward drag at the top of the page.
-  // Deliberately scoped to ONE finger only, so two-finger pinch-zoom (which
-  // we want working on phones) is completely untouched.
-  var lastTouchY = 0;
-  document.addEventListener("touchstart", function(e){
-    if(e.touches.length === 1) lastTouchY = e.touches[0].clientY;
-  }, { passive: true });
-  document.addEventListener("touchmove", function(e){
-    if(e.touches.length !== 1) return;
-    var touchY = e.touches[0].clientY;
-    var scrollTop = document.scrollingElement ? document.scrollingElement.scrollTop : 0;
-    if(scrollTop <= 0 && touchY > lastTouchY){
-      e.preventDefault();
-    }
-    lastTouchY = touchY;
-  }, { passive: false });
-
-  // badges only ever render at ~90-176px — every uploaded photo gets
-  // resized/recompressed down to this before it's ever stored. Skipping
-  // this is what let a handful of full-resolution phone photos push
-  // board_state past Vercel's request size limit, which is what made Save
-  // start silently failing (and then Load "reverted" everything, because
-  // Save never actually reached the server in the first place).
-  //
-  // With 150+ badges on one board, even a modest ~30KB/photo average adds
-  // up past that same limit — so this isn't just resize-and-done, it
-  // adaptively lowers JPEG quality per photo until it's actually under
-  // PHOTO_MAX_BYTES, regardless of how busy/detailed that particular image
-  // is. A fixed quality setting can't guarantee that on its own.
-  var PHOTO_MAX_DIM = 200, PHOTO_QUALITY = 0.6, PHOTO_MAX_BYTES = 15*1024;
-  function compressImageDataUrl(dataUrl, maxDim, quality){
-    return new Promise(function(resolve){
-      var img = new Image();
-      img.onload = function(){
-        var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        var w = Math.max(1, Math.round(img.width * scale));
-        var h = Math.max(1, Math.round(img.height * scale));
-        var canvas = document.createElement("canvas");
-        canvas.width = w; canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        var q = quality;
-        var out = canvas.toDataURL("image/jpeg", q);
-        // base64 inflates raw bytes by ~4/3 — compare against that, not the
-        // raw byte budget directly.
-        var guard = 0;
-        while(out.length > PHOTO_MAX_BYTES*1.37 && q > 0.2 && guard < 8){
-          q -= 0.1;
-          out = canvas.toDataURL("image/jpeg", q);
-          guard++;
-        }
-        resolve(out);
-      };
-      img.onerror = function(){ resolve(dataUrl); }; // fall back to the original rather than losing the photo
-      img.src = dataUrl;
-    });
-  }
-
-  // lightweight on-page notice for errors — window.alert() (and confirm())
-  // force the browser to exit fullscreen, a hard platform behavior we can't
-  // suppress. That's exactly why every other confirmation in this app
-  // already avoids native dialogs; this is the same idea for one-line
-  // error messages instead of Yes/No prompts.
-  var toastEl = null, toastTimer = null;
-  function showToast(msg, isError){
-    if(toastEl) toastEl.remove();
-    if(toastTimer) clearTimeout(toastTimer);
-    toastEl = document.createElement("div");
-    toastEl.textContent = msg;
-    toastEl.style.cssText = "position:fixed; left:50%; bottom:80px; transform:translateX(-50%); "+
-      "background:"+(isError?"#5a1f1f":"#1c2025")+"; color:#fff; padding:12px 18px; border-radius:10px; "+
-      "font-size:13px; max-width:80vw; text-align:center; z-index:400; box-shadow:0 6px 20px rgba(0,0,0,0.5); "+
-      "border:1px solid "+(isError?"#a33":"var(--line)")+";";
-    document.body.appendChild(toastEl);
-    toastTimer = setTimeout(function(){ if(toastEl){ toastEl.remove(); toastEl=null; } }, 6000);
-  }
-
   // custom confirm modal — native window.confirm() blocks the page and is
   // unreliable on TV/kiosk browsers, so every confirmation goes through this.
   var confirmOverlay = document.getElementById("confirmOverlay");
@@ -740,24 +601,8 @@
     if(confirmResolve) confirmResolve(false);
   });
 
-  // the PIN itself now lives server-side (api/unlock.js) — this is just
-  // how many digits the keypad collects before submitting for a token.
-  var PIN_LENGTH = 4;
-  var TOKEN_KEY = "mdb_pb_token";
-  function getToken(){ try{ return localStorage.getItem(TOKEN_KEY); }catch(e){ return null; } }
-  function setToken(t){ try{ if(t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }catch(e){} }
-
-  var SUPABASE_URL = "https://lufrguiekfkhtxsgcqjo.supabase.co";
-  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1ZnJndWlla2ZraHR4c2djcWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4Njk4OTYsImV4cCI6MjEwMTQ0NTg5Nn0.TZzdc_KC1go_UHRbvKI5z45N5dSw1g3_QssCc77msbA";
-  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  var DEVICE_ID_KEY = "mdb_pb_device_id";
-  var deviceId = null;
-  try{
-    deviceId = localStorage.getItem(DEVICE_ID_KEY);
-    if(!deviceId){ deviceId = crypto.randomUUID(); localStorage.setItem(DEVICE_ID_KEY, deviceId); }
-  }catch(e){ deviceId = "unknown"; }
-
+  // Temp build: everything lives in this browser's localStorage only — no
+  // Supabase, no PIN, no realtime, no server saves. Editing is always on.
   var JOB_ROWS = [
     { name:"", color:"blue" },
     { name:"", color:"blue" },
@@ -833,9 +678,6 @@
   laneEls["trucks"] = document.querySelector("#panelTrucks .lane");
   laneEls["equipment"] = document.querySelector("#panelEquipment .lane");
   laneEls["trailers"] = document.querySelector("#panelTrailers .lane");
-  laneEls["dumpster"] = document.querySelector("#panelDumpster .lane");
-  laneEls["signs"] = document.querySelector("#panelSigns .lane");
-  laneEls["camera"] = document.querySelector("#panelCamera .lane");
 
   // ---- free-floating overlay layers ----
   var cardLayer = document.getElementById("cardLayer");
@@ -866,96 +708,12 @@
   }
   tick(); setInterval(tick, 30000);
 
-  // ---- lock / unlock ----
-  // the PIN check happens server-side (api/unlock.js) — a correct PIN gets
-  // this device a signed session token, which is what actually authorizes
-  // writes (see saveState()). Losing/clearing the token re-locks the device
-  // even if it "remembers" nothing else.
-  var unlocked = false;
-  var devBtn = document.getElementById("devModeBtn");
-  var pinOverlay = document.getElementById("pinOverlay");
-  var pinDots = document.getElementById("pinDots");
-  var pinError = document.getElementById("pinError");
-  var pinBuffer = "";
-  var pinSubmitting = false;
-
-  function renderDots(){
-    pinDots.innerHTML = "";
-    for(var i=0;i<PIN_LENGTH;i++){
-      var d = document.createElement("span");
-      if(i<pinBuffer.length) d.className = "filled";
-      pinDots.appendChild(d);
-    }
-  }
-  function openPinModal(){ pinBuffer=""; pinError.textContent=""; renderDots(); pinOverlay.classList.add("show"); }
-  function closePinModal(){ pinOverlay.classList.remove("show"); }
-
-  devBtn.addEventListener("click", openPinModal);
-  document.getElementById("pinCancel").addEventListener("click", closePinModal);
-  document.getElementById("pinBack").addEventListener("click", function(){
-    pinBuffer = pinBuffer.slice(0,-1);
-    renderDots();
-  });
-  document.querySelectorAll("#keypad button[data-k]").forEach(function(btn){
-    btn.addEventListener("click", function(){
-      if(pinSubmitting || pinBuffer.length>=PIN_LENGTH) return;
-      pinBuffer += btn.dataset.k;
-      renderDots();
-      if(pinBuffer.length===PIN_LENGTH){
-        pinSubmitting = true;
-        fetch("/api/unlock", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pin: pinBuffer, deviceId: deviceId })
-        }).then(function(r){
-          return r.json().then(function(body){ return { ok: r.ok, body: body }; });
-        }).then(function(res){
-          pinSubmitting = false;
-          if(res.ok && res.body.token){
-            setToken(res.body.token);
-            claimDevice();
-          } else {
-            pinError.textContent = "Wrong PIN — try again";
-            setTimeout(function(){ pinBuffer=""; renderDots(); }, 350);
-          }
-        }).catch(function(){
-          pinSubmitting = false;
-          pinError.textContent = "Couldn't reach the server — try again";
-          setTimeout(function(){ pinBuffer=""; renderDots(); }, 350);
-        });
-      }
-    });
-  });
-
-  function claimDevice(){
-    setUnlocked(true);
-    closePinModal();
-    document.getElementById("fsPrompt").classList.add("show");
-  }
-
-  function setUnlocked(v){
-    unlocked = v;
-    document.body.classList.toggle("unlocked", v);
-    document.body.classList.toggle("showDevTools", v);
-    document.getElementById("editTools").style.display = v ? "block" : "none";
-    document.getElementById("viewOnlyNotice").style.display = v ? "none" : "block";
-    if(!v){
-      setToken(null);
-    }
-  }
-  document.getElementById("forgetDevice").addEventListener("click", function(){
-    customConfirm("Re-lock editing on this device? You'll need the PIN again next time.").then(function(ok){
-      if(!ok) return;
-      setUnlocked(false);
-    });
-  });
-  // always locked on load — the PIN has to be re-entered on every refresh,
-  // even on a device that was unlocked a moment ago. No auto-unlock from a
-  // saved token.
-  (function initLock(){
-    setUnlocked(false);
-    document.getElementById("fsPrompt").classList.add("show");
-  })();
+  // ---- always unlocked — this build has no PIN/lock concept ----
+  var unlocked = true;
+  document.body.classList.add("unlocked", "showDevTools");
+  document.getElementById("editTools").style.display = "block";
+  document.getElementById("viewOnlyNotice").style.display = "none";
+  document.getElementById("fsPrompt").classList.add("show");
 
   // ---- color wheel (legacy, feeds currentColor default) ----
   var wheel = document.getElementById("wheel");
@@ -1012,26 +770,11 @@
     return type==="v" ? "🚚" : "👤";
   }
 
-  // employee badge photos are 1080x1080 headshots that already have a name
-  // tag baked into the image near the bottom — the photo box crops to the
-  // top of the frame (see .card.type-person .photo background-position) so
-  // that baked-in tag never shows, and our own name bar underneath is what
-  // actually labels the badge, always. hideBar is a rare manual per-badge
-  // opt-out (e.g. Julio's badge is a group photo of three guys with no
-  // individual tag, so it stays on — nothing needs it hidden right now).
-  function shouldAutoHideBar(type, category, photo, hideBar){
-    return !!hideBar;
-  }
-  function applyBarVisibility(el){
-    el.classList.toggle("noBar", el.dataset.hideBar==="1");
-  }
-
-  function makeCard(label, x, y, photo, type, fontSize, color, fontFamily, category, scale, hideBar){
+  function makeCard(label, x, y, photo, type, fontSize, color, fontFamily, category, scale){
     cardSeq++;
     type = (type==="v"||type==="p"||type==="t") ? type : "p";
     var el = document.createElement("div");
-    el.className = "card type-" + (type==="v" ? "vehicle" : type==="t" ? "text" : "person") + (shouldAutoHideBar(type, category, photo, hideBar) ? " noBar" : "");
-    if(hideBar) el.dataset.hideBar = "1";
+    el.className = "card type-" + (type==="v" ? "vehicle" : type==="t" ? "text" : "person");
     el.style.left = x+"px";
     el.style.top = y+"px";
     if(type!=="t") el.style.setProperty("--tilt", ((cardSeq % 5) - 2) * 0.6 + "deg");
@@ -1061,12 +804,9 @@
       textDiv.style.color = "#1f5fa8";
       textDiv.style.fontFamily = "'Kalam', sans-serif";
       el.appendChild(textDiv);
-      var minBtnT = document.createElement("span");
-      minBtnT.className = "minimizeBtn"; minBtnT.title = "Shrink"; minBtnT.textContent = "−";
-      el.appendChild(minBtnT);
-      var maxBtnT = document.createElement("span");
-      maxBtnT.className = "maximizeBtn"; maxBtnT.title = "Grow"; maxBtnT.textContent = "+";
-      el.appendChild(maxBtnT);
+      var xBtn = document.createElement("span");
+      xBtn.className = "x"; xBtn.textContent = "✕";
+      el.appendChild(xBtn);
       cardLayer.appendChild(el);
       wireCard(el);
       return el;
@@ -1075,8 +815,7 @@
     var html = '<div class="photo"' + (photo ? ' style="background-image:url(\''+photo+'\')"' : '') + '>' +
       (photo ? '' : '<span class="noPhoto">'+noPhotoIcon(type, category)+'</span>') +
       '</div>';
-    html += '<div class="bar"><div class="barName">'+escapeHtml(label)+'</div></div>'+
-      '<span class="minimizeBtn" title="Shrink">−</span><span class="maximizeBtn" title="Grow">+</span>';
+    html += '<div class="bar"><div class="barName">'+escapeHtml(label)+'</div></div><span class="x">✕</span>';
     el.innerHTML = html;
     if(photo) el.dataset.photo = photo;
     cardLayer.appendChild(el);
@@ -1103,7 +842,6 @@
     }
   }
 
-
   function pointerDist(a, b){
     var dx = a.x-b.x, dy = a.y-b.y;
     return Math.sqrt(dx*dx + dy*dy);
@@ -1117,7 +855,7 @@
     var c = {
       label: el.dataset.label, type: el.dataset.type, photo: el.dataset.photo||null,
       category: el.dataset.category||null, ezoId: el.dataset.ezoId||null,
-      description: el.dataset.description||null, hideBar: el.dataset.hideBar==="1"
+      description: el.dataset.description||null
     };
     el.remove();
     if(selectedCard===el) selectedCard=null;
@@ -1127,25 +865,21 @@
     saveState();
   }
 
-  var MINIMIZE_STEP = 0.15;
-
   function wireCard(el){
-    // mouse-only equivalent of pinch-to-resize — a mouse can't pinch, so
-    // these are the desktop way to shrink/grow a card. Removal now happens
-    // only through the preview/editor modals (Delete / Move to Tray), not a
-    // corner icon on the card itself.
-    function stepScale(delta){
-      return function(ev){
-        ev.stopPropagation();
-        if(!unlocked) return;
-        var scale = Math.max(PINCH_MIN_SCALE, Math.min(PINCH_MAX_SCALE, (parseFloat(el.dataset.scale)||1) + delta));
-        el.dataset.scale = scale;
-        el.style.setProperty("--pz", scale);
+    el.querySelector(".x").addEventListener("click", function(ev){
+      ev.stopPropagation();
+      if(!unlocked) return;
+      if(el.dataset.type === "t"){
+        // text has no tray home — X permanently deletes it.
+        el.remove();
+        if(selectedCard===el) selectedCard=null;
         saveState();
-      };
-    }
-    el.querySelector(".minimizeBtn").addEventListener("click", stepScale(-MINIMIZE_STEP));
-    el.querySelector(".maximizeBtn").addEventListener("click", stepScale(MINIMIZE_STEP));
+      } else {
+        // badges go back to the tray instead of vanishing — X was
+        // destroying them permanently before, which wasn't recoverable.
+        moveCardToTray(el);
+      }
+    });
     var dragging=false, offX=0, offY=0, downX=0, downY=0, moved=false;
     // two-finger pinch-to-resize — works on badges and text cards alike.
     // Tracks both active touch points on this card; once a second one
@@ -1157,7 +891,7 @@
 
     el.addEventListener("pointerdown", function(e){
       if(!unlocked) return;
-      if(e.target.classList.contains("minimizeBtn") || e.target.classList.contains("maximizeBtn")) return;
+      if(e.target.classList.contains("x")) return;
       e.preventDefault(); // stop the browser's native text-selection drag from stealing the gesture
       el.setPointerCapture(e.pointerId);
       activePointers[e.pointerId] = { x: e.clientX, y: e.clientY };
@@ -1179,8 +913,8 @@
         dragging=true; moved=false;
         downX = e.clientX; downY = e.clientY;
         var r = cardLayer.getBoundingClientRect();
-        offX = (e.clientX - r.left)/viewScale() - el.offsetLeft;
-        offY = (e.clientY - r.top)/viewScale() - el.offsetTop;
+        offX = (e.clientX - r.left)/boardScale - el.offsetLeft;
+        offY = (e.clientY - r.top)/boardScale - el.offsetTop;
         el.style.cursor="grabbing";
       }
     });
@@ -1205,11 +939,10 @@
         dragActive = true;
       }
       var r = cardLayer.getBoundingClientRect();
-      var vs = viewScale();
-      var nx = (e.clientX - r.left)/vs - offX;
-      var ny = (e.clientY - r.top)/vs - offY;
-      nx = Math.max(0, Math.min(nx, (r.width/vs)-el.offsetWidth));
-      ny = Math.max(0, Math.min(ny, (r.height/vs)-el.offsetHeight));
+      var nx = (e.clientX - r.left)/boardScale - offX;
+      var ny = (e.clientY - r.top)/boardScale - offY;
+      nx = Math.max(0, Math.min(nx, (r.width/boardScale)-el.offsetWidth));
+      ny = Math.max(0, Math.min(ny, (r.height/boardScale)-el.offsetHeight));
       el.style.left = nx+"px"; el.style.top = ny+"px";
     });
     function endDrag(){
@@ -1275,23 +1008,23 @@
   function seedDefaults(){ saveState(); }
 
   // ---- badge tray: the single home for every badge not currently placed
-  // on the board. Badges are created entirely by hand now (see "Add Badge"
-  // further down) — no EZOfficeInventory/OneDrive auto-pull. Tray cards
+  // on the board, pulled in by the nightly cron / "Sync Up Board" button
+  // (see triggerSync() further down), never automatically. Tray cards
   // render into #trayGrid (no x/y needed — the grid lays them out);
   // dragging one onto the whiteboard instantiates it there via makeCard()
-  // and removes it from the tray.
+  // and removes it
+  // from the tray.
   var trayGrid = document.getElementById("trayGrid");
   var trayTab = document.getElementById("trayTab");
   var trayPanel = document.getElementById("trayPanel");
   var trayTabArrow = document.getElementById("trayTabArrow");
+  var trayFilter = "all";
   var trayPage = 0;
   var TRAY_PAGE_COLS = 10, TRAY_PAGE_ROWS = 2;
   var TRAY_PAGE_SIZE = TRAY_PAGE_COLS * TRAY_PAGE_ROWS;
   var trayPrevBtn = document.getElementById("trayPrevBtn");
   var trayNextBtn = document.getElementById("trayNextBtn");
   var trayPageLabel = document.getElementById("trayPageLabel");
-  var traySearchInput = document.getElementById("traySearchInput");
-  var traySearch = "";
 
   function setTrayOpen(v){
     trayPanel.classList.toggle("open", v);
@@ -1301,44 +1034,43 @@
   }
   trayTab.addEventListener("click", function(){ setTrayOpen(!trayPanel.classList.contains("open")); });
 
+  document.querySelectorAll(".trayFilterBtn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      trayFilter = btn.dataset.filter;
+      trayPage = 0;
+      document.querySelectorAll(".trayFilterBtn").forEach(function(b){ b.classList.toggle("active", b===btn); });
+      refreshTrayView();
+    });
+  });
   trayPrevBtn.addEventListener("click", function(){ trayPage--; refreshTrayView(); });
   trayNextBtn.addEventListener("click", function(){ trayPage++; refreshTrayView(); });
-  traySearchInput.addEventListener("input", function(){
-    traySearch = traySearchInput.value.trim().toLowerCase();
-    trayPage = 0;
-    refreshTrayView();
-  });
 
-  // shows badges TRAY_PAGE_SIZE at a time (paged, not scrolled), narrowed
-  // down to whatever's typed into the search box first — handy once there
-  // are 100+ badges and you know roughly what you're looking for.
+  // shows badges TRAY_PAGE_SIZE at a time (paged, not scrolled) — filtering
+  // by category happens first, then the current page slices into that
+  // filtered set, so page count always reflects what's actually visible.
   function refreshTrayView(){
     var all = Array.prototype.slice.call(trayGrid.querySelectorAll(".card"));
-    var matches = traySearch
-      ? all.filter(function(el){ return (el.dataset.label||"").toLowerCase().indexOf(traySearch) !== -1; })
-      : all;
+    var matches = all.filter(function(el){ return trayFilter==="all" || el.dataset.category===trayFilter; });
     var totalPages = Math.max(1, Math.ceil(matches.length / TRAY_PAGE_SIZE));
     if(trayPage >= totalPages) trayPage = totalPages-1;
     if(trayPage < 0) trayPage = 0;
     all.forEach(function(el){ el.style.display = "none"; });
     var start = trayPage*TRAY_PAGE_SIZE, end = start+TRAY_PAGE_SIZE;
     matches.slice(start, end).forEach(function(el){ el.style.display = ""; });
-    trayPageLabel.textContent = matches.length ? ("Page " + (trayPage+1) + " / " + totalPages + "  (" + matches.length + " badges)") : (traySearch ? "No badges match \""+traySearchInput.value.trim()+"\"" : "No badges in the tray");
+    trayPageLabel.textContent = matches.length ? ("Page " + (trayPage+1) + " / " + totalPages + "  (" + matches.length + " badges)") : "No badges in this category";
     trayPrevBtn.disabled = trayPage<=0;
     trayNextBtn.disabled = trayPage>=totalPages-1;
   }
 
   function makeTrayCard(c){
     var el = document.createElement("div");
-    var category = c.category || (c.type==="v" ? "truck" : "employee");
-    el.className = "card trayCard type-" + (c.type==="v" ? "vehicle" : "person") + (shouldAutoHideBar(c.type, category, c.photo, c.hideBar) ? " noBar" : "");
+    el.className = "card trayCard type-" + (c.type==="v" ? "vehicle" : "person");
     el.dataset.type = c.type;
     el.dataset.label = c.label;
-    el.dataset.category = category;
+    el.dataset.category = c.category || (c.type==="v" ? "truck" : "employee");
     if(c.photo) el.dataset.photo = c.photo;
     if(c.ezoId) el.dataset.ezoId = c.ezoId;
     if(c.description) el.dataset.description = c.description;
-    if(c.hideBar) el.dataset.hideBar = "1";
     var html = '<div class="photo"' + (c.photo ? ' style="background-image:url(\''+c.photo+'\')"' : '') + '>' +
       (c.photo ? '' : '<span class="noPhoto">'+noPhotoIcon(c.type, c.category)+'</span>') +
       '</div>';
@@ -1351,62 +1083,51 @@
     return el;
   }
 
-  // ---- add badge: the only way new badges get created now — no more
-  // EZOfficeInventory/OneDrive auto-pull. Photos are stored inline as
-  // base64 data URLs (same approach the old photo-upload feature used),
-  // so there's no separate file host to manage.
-  var addBadgeOverlay = document.getElementById("addBadgeOverlay");
-  var addBadgeName = document.getElementById("addBadgeName");
-
-  function openAddBadge(){
-    addBadgeName.value = "";
-    addBadgeOverlay.classList.add("show");
-    setTimeout(function(){ addBadgeName.focus(); }, 30);
+  // ---- badge pull: this temp build talks straight to /api/assets and
+  // /api/employees (the same EZOfficeInventory + OneDrive pulls the real
+  // board's nightly cron uses) and merges the result into the LOCAL tray —
+  // no Supabase, no auth, nothing leaves this browser. Badges already
+  // placed on the board or already in the tray (matched by ezoId) are left
+  // alone; only new ones get added.
+  function existingEzoIds(){
+    var ids = {};
+    document.querySelectorAll(".card[data-ezo-id]").forEach(function(el){ ids[el.dataset.ezoId] = true; });
+    return ids;
   }
-  function closeAddBadge(){
-    addBadgeOverlay.classList.remove("show");
-  }
-  document.getElementById("addBadgeBtn").addEventListener("click", function(){
-    if(!unlocked) return;
-    openAddBadge();
-  });
-  document.getElementById("addBadgeCloseX").addEventListener("click", closeAddBadge);
-  addBadgeOverlay.addEventListener("click", function(e){
-    if(e.target === addBadgeOverlay) closeAddBadge();
-  });
-  document.getElementById("addBadgeCancel").addEventListener("click", closeAddBadge);
-  // no category to choose anymore — every new badge starts as a plain
-  // employee-styled card with no photo; add a photo (and it'll pick up the
-  // right look) by tapping it in the tray afterward.
-  document.getElementById("addBadgeCreate").addEventListener("click", function(){
-    var label = addBadgeName.value.trim();
-    if(!label) return;
-    var c = {
-      label: label, type: "p", photo: null,
-      category: "employee", ezoId: "custom-" + Date.now().toString(36) + Math.random().toString(36).slice(2)
-    };
-    makeTrayCard(c);
-    trayPage = 0;
-    refreshTrayView();
-    saveState();
-    closeAddBadge();
-  });
-
-  // recompresses every already-stored photo down to
-  // PHOTO_MAX_DIM/PHOTO_QUALITY, mutating the live DOM (dataset.photo +
-  // visible background) directly. Called automatically by pushToServer()
-  // when a save is too big to send — see there.
-  function shrinkAllCardPhotos(){
-    var targets = Array.prototype.slice.call(document.querySelectorAll(".card"))
-      .filter(function(el){ return el.dataset.photo && el.dataset.photo.indexOf("data:") === 0; });
-    return Promise.all(targets.map(function(el){
-      return compressImageDataUrl(el.dataset.photo, PHOTO_MAX_DIM, PHOTO_QUALITY).then(function(compressed){
-        el.dataset.photo = compressed;
-        var photoDiv = el.querySelector(".photo");
-        if(photoDiv) photoDiv.style.backgroundImage = "url('"+compressed+"')";
+  function pullBadges(){
+    var have = existingEzoIds();
+    return Promise.all([
+      fetch("/api/assets").then(function(r){ return r.json(); }).catch(function(){ return { items: [] }; }),
+      fetch("/api/employees").then(function(r){ return r.json(); }).catch(function(){ return { items: [] }; })
+    ]).then(function(results){
+      var items = [].concat(results[0].items||[], results[1].items||[]);
+      var added = 0;
+      items.forEach(function(item){
+        var id = String(item.ezoId);
+        if(have[id]) return;
+        have[id] = true;
+        added++;
+        makeTrayCard({
+          label: item.name, type: item.category==="employee" ? "p" : "v",
+          photo: item.photo, category: item.category, ezoId: id
+        });
       });
-    })).then(function(){ return targets.length; });
+      trayPage = 0;
+      refreshTrayView();
+      if(added) saveState();
+      return added;
+    });
   }
+
+  document.getElementById("syncAllBtn").addEventListener("click", function(){
+    var btn = this;
+    btn.disabled = true; btn.textContent = "Pulling…";
+    pullBadges().then(function(added){
+      btn.disabled = false; btn.textContent = "🔄 Pull Badges";
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = "🔄 Pull Badges";
+    });
+  });
 
   // dragging a tray badge picks it up as a floating ghost (viewport
   // coordinates — no board scale conversion needed until drop); dropping it
@@ -1418,9 +1139,9 @@
     nx = Math.max(0, Math.min(nx, whiteboard.offsetWidth-88));
     ny = Math.max(0, Math.min(ny, whiteboard.offsetHeight-104));
     var label=el.dataset.label, type=el.dataset.type, photo=el.dataset.photo||null, category=el.dataset.category||null;
-    var ezoId=el.dataset.ezoId||null, description=el.dataset.description||null, hideBar=el.dataset.hideBar==="1";
+    var ezoId=el.dataset.ezoId||null, description=el.dataset.description||null;
     el.remove();
-    var card = makeCard(label, nx, ny, photo, type, null, null, null, category, null, hideBar);
+    var card = makeCard(label, nx, ny, photo, type, null, null, null, category);
     if(ezoId) card.dataset.ezoId = ezoId;
     if(description) card.dataset.description = description;
     selectCard(card);
@@ -1486,7 +1207,7 @@
       var overTray = trayRect && cy >= trayRect.top;
       var overBoard = !overTray && cx>=wbRect.left && cx<=wbRect.right && cy>=wbRect.top && cy<=wbRect.bottom;
       if(overBoard){
-        placeTrayCardAt(el, (cx - wbRect.left)/viewScale() - 44, (cy - wbRect.top)/viewScale() - 51);
+        placeTrayCardAt(el, (cx - wbRect.left)/boardScale - 44, (cy - wbRect.top)/boardScale - 51);
       }
     }
     el.addEventListener("pointerup", endDrag);
@@ -1528,23 +1249,20 @@
         return;
       }
       jobPickList.innerHTML = "";
-      var byGroup = {};
-      var groupOrder = [];
+      var bySection = {};
       data.jobs.forEach(function(j){
         var sec = j.section || "Other";
-        var status = j.status || "Build";
-        var key = sec + " — " + status;
-        if(!byGroup[key]){ byGroup[key] = []; groupOrder.push(key); }
-        byGroup[key].push(j);
+        if(!bySection[sec]) bySection[sec] = [];
+        bySection[sec].push(j);
       });
-      groupOrder.forEach(function(key){
+      Object.keys(bySection).forEach(function(sec){
         var h = document.createElement("div");
         h.className = "hint";
         h.style.marginTop = "8px";
         h.style.fontWeight = "700";
-        h.textContent = key;
+        h.textContent = sec;
         jobPickList.appendChild(h);
-        byGroup[key].forEach(function(j){
+        bySection[sec].forEach(function(j){
           var btn = document.createElement("button");
           btn.textContent = j.job;
           btn.addEventListener("click", function(){
@@ -1616,8 +1334,7 @@
       Array.prototype.slice.call(cardLayer.querySelectorAll('.card[data-type="t"]')).forEach(function(el){ el.remove(); });
       Array.prototype.slice.call(cardLayer.querySelectorAll('.card[data-type="p"], .card[data-type="v"]')).forEach(function(el){
         var c = { label: el.dataset.label, type: el.dataset.type, photo: el.dataset.photo||null,
-          category: el.dataset.category||null, ezoId: el.dataset.ezoId||null, description: el.dataset.description||null,
-          hideBar: el.dataset.hideBar==="1" };
+          category: el.dataset.category||null, ezoId: el.dataset.ezoId||null, description: el.dataset.description||null };
         el.remove();
         makeTrayCard(c);
       });
@@ -1636,7 +1353,6 @@
   var penBtn=document.getElementById("penToolBtn");
   var eraserBtn=document.getElementById("eraserToolBtn");
   var textBtn=document.getElementById("textToolBtn");
-  var lockBtn=document.getElementById("lockToolBtn");
   var penWidth=document.getElementById("penWidth");
   var penColor=document.getElementById("penColor");
   var eraserWidth=document.getElementById("eraserWidth");
@@ -1656,7 +1372,7 @@
   var lastMouseX = null, lastMouseY = null, overCanvas = false;
   function updateBrushCursor(){
     if((!drawMode && !eraseMode) || !overCanvas || lastMouseX===null){ brushCursor.style.display="none"; return; }
-    var size = (eraseMode ? parseInt(eraserWidth.value,10) : parseInt(penWidth.value,10)) * viewScale();
+    var size = (eraseMode ? parseInt(eraserWidth.value,10) : parseInt(penWidth.value,10)) * boardScale;
     brushCursor.style.width = size+"px";
     brushCursor.style.height = size+"px";
     brushCursor.style.left = lastMouseX+"px";
@@ -1695,96 +1411,37 @@
   penBtn.addEventListener("click", function(){ if(!unlocked) return; setDrawMode(!drawMode); });
   eraserBtn.addEventListener("click", function(){ if(!unlocked) return; setEraseMode(!eraseMode); });
   textBtn.addEventListener("click", function(){ if(!unlocked) return; openTextEditor(null); });
-  lockBtn.addEventListener("click", function(){ document.getElementById("forgetDevice").click(); toolMenuItems.classList.remove("open"); });
   drawCanvas.style.pointerEvents="none";
 
   // ---- badge detail preview — tap a person/vehicle badge (no drag) to see
-  // and edit its photo/name/description; edits commit on close. Name and
-  // photo used to be locked here because EZOfficeInventory/OneDrive sync
-  // owned them and would just overwrite any local edit — now that badges
-  // are added and maintained entirely by hand, both are editable.
+  // its photo/name and an editable description; only description + photo
+  // are editable here (never the name), and edits commit on close.
   var badgeDetailOverlay = document.getElementById("badgeDetailOverlay");
   var badgeDetailPhoto = document.getElementById("badgeDetailPhoto");
   var badgeDetailPhotoWrap = document.getElementById("badgeDetailPhotoWrap");
-  var badgeDetailPhotoInput = document.getElementById("badgeDetailPhotoInput");
   var badgeDetailName = document.getElementById("badgeDetailName");
   var badgeDetailDesc = document.getElementById("badgeDetailDesc");
-  var badgeDetailHideBar = document.getElementById("badgeDetailHideBar");
   var badgeDetailToTray = document.getElementById("badgeDetailToTray");
   var badgeDetailTarget = null;
-  var badgeDetailPendingPhoto = undefined; // undefined = unchanged; null/string = explicit new value
-  var badgeDetailPhotoBusy = null; // Promise while a photo is still compressing, else null
 
   function openBadgeDetail(el){
     badgeDetailTarget = el;
-    badgeDetailPendingPhoto = undefined;
-    badgeDetailPhotoBusy = null;
-    badgeDetailName.value = el.dataset.label || "";
+    badgeDetailName.textContent = el.dataset.label;
     badgeDetailDesc.value = el.dataset.description || "";
     badgeDetailPhoto.style.backgroundImage = el.dataset.photo ? "url('"+el.dataset.photo+"')" : "";
-    badgeDetailHideBar.checked = el.dataset.hideBar === "1";
     // "Move to Tray" only makes sense for a badge that's actually placed on
     // the board — one opened from the tray itself (via a held tap) is
     // already there, so hide it in that case.
     badgeDetailToTray.style.display = el.parentElement === cardLayer ? "inline-block" : "none";
     badgeDetailOverlay.classList.add("show");
   }
-  badgeDetailPhotoWrap.addEventListener("click", function(){
-    if(!unlocked || !badgeDetailTarget) return;
-    badgeDetailPhotoInput.click();
-  });
-  badgeDetailPhotoInput.addEventListener("change", function(){
-    var f = badgeDetailPhotoInput.files[0];
-    if(!f) return;
-    var reader = new FileReader();
-    reader.onload = function(e){
-      badgeDetailPhotoBusy = compressImageDataUrl(e.target.result, PHOTO_MAX_DIM, PHOTO_QUALITY).then(function(compressed){
-        badgeDetailPendingPhoto = compressed;
-        badgeDetailPhoto.style.backgroundImage = "url('"+compressed+"')";
-        badgeDetailPhotoBusy = null;
-      });
-    };
-    reader.readAsDataURL(f);
-  });
   function closeBadgeDetail(commit){
-    // a photo may still be mid-compression (async) — wait for it instead of
-    // silently committing without the photo the user just picked.
-    if(commit && badgeDetailPhotoBusy){
-      badgeDetailPhotoBusy.then(function(){ closeBadgeDetail(commit); });
-      return;
-    }
     if(commit && badgeDetailTarget){
-      var el = badgeDetailTarget;
-      var newLabel = badgeDetailName.value.trim();
-      if(newLabel) el.dataset.label = newLabel;
-      el.dataset.description = badgeDetailDesc.value.trim();
-      if(badgeDetailPendingPhoto !== undefined){
-        if(badgeDetailPendingPhoto) el.dataset.photo = badgeDetailPendingPhoto;
-        else delete el.dataset.photo;
-      }
-      if(badgeDetailHideBar.checked) el.dataset.hideBar = "1";
-      else delete el.dataset.hideBar;
-      applyBarVisibility(el);
-      // reflect the (possibly new) label/photo on the card itself
-      var barName = el.querySelector(".barName");
-      if(barName){ barName.textContent = el.dataset.label; fitBadgeName(barName); }
-      var photoDiv = el.querySelector(".photo");
-      if(photoDiv){
-        photoDiv.style.backgroundImage = el.dataset.photo ? "url('"+el.dataset.photo+"')" : "";
-        var np = photoDiv.querySelector(".noPhoto");
-        if(el.dataset.photo){ if(np) np.remove(); }
-        else if(!np){
-          var span = document.createElement("span");
-          span.className = "noPhoto";
-          span.textContent = noPhotoIcon(el.dataset.type, el.dataset.category);
-          photoDiv.appendChild(span);
-        }
-      }
+      badgeDetailTarget.dataset.description = badgeDetailDesc.value.trim();
       saveState();
     }
     badgeDetailOverlay.classList.remove("show");
     badgeDetailTarget = null;
-    badgeDetailPendingPhoto = undefined;
   }
   document.getElementById("badgeDetailCloseX").addEventListener("click", function(){ closeBadgeDetail(true); });
   badgeDetailOverlay.addEventListener("click", function(e){
@@ -1863,7 +1520,7 @@
     drawing=true;
     drawCanvas.setPointerCapture(e.pointerId);
     var r=drawCanvas.getBoundingClientRect();
-    dctx.beginPath(); dctx.moveTo((e.clientX-r.left)/viewScale(), (e.clientY-r.top)/viewScale());
+    dctx.beginPath(); dctx.moveTo((e.clientX-r.left)/boardScale, (e.clientY-r.top)/boardScale);
     if(eraseMode){
       dctx.globalCompositeOperation = "destination-out";
       dctx.lineWidth = parseInt(eraserWidth.value,10);
@@ -1875,7 +1532,7 @@
   drawCanvas.addEventListener("pointermove", function(e){
     if(!drawing) return;
     var r=drawCanvas.getBoundingClientRect();
-    dctx.lineTo((e.clientX-r.left)/viewScale(), (e.clientY-r.top)/viewScale()); dctx.stroke();
+    dctx.lineTo((e.clientX-r.left)/boardScale, (e.clientY-r.top)/boardScale); dctx.stroke();
   });
   function endStroke(){ if(drawing){ drawing=false; dctx.globalCompositeOperation="source-over"; hasDrawing=true; saveState(); } }
   drawCanvas.addEventListener("pointerup", endStroke);
@@ -1889,19 +1546,9 @@
   });
 
   var fsPrompt = document.getElementById("fsPrompt");
-  // iOS Safari doesn't support the Fullscreen API on arbitrary elements at
-  // all — document.documentElement.requestFullscreen is simply undefined
-  // there, so calling it throws synchronously (before .catch() can even
-  // attach) and aborts the rest of the click handler, leaving this modal
-  // stuck open forever. Guard for the method existing at all.
-  function tryFullscreen(){
-    if(document.documentElement.requestFullscreen){
-      document.documentElement.requestFullscreen().catch(function(){});
-    }
-  }
   document.getElementById("fsPromptBtn").addEventListener("click", function(ev){
     ev.stopPropagation();
-    tryFullscreen();
+    document.documentElement.requestFullscreen().catch(function(){});
     fsPrompt.classList.remove("show");
   });
   document.getElementById("fsPromptSkip").addEventListener("click", function(ev){
@@ -1909,52 +1556,24 @@
     fsPrompt.classList.remove("show");
   });
   document.getElementById("fsPromptInner").addEventListener("click", function(){
-    tryFullscreen();
+    document.documentElement.requestFullscreen().catch(function(){});
     fsPrompt.classList.remove("show");
   });
 
-  // ---- board fits the screen by default; a custom pinch gesture layers a
-  // user-controlled zoom/pan on top. This is NOT the browser's native pinch
-  // zoom (that's disabled everywhere — see the viewport meta tag — because
-  // it triggers a page-refresh bug on at least one mobile browser). Pinching
-  // directly on a badge still resizes that badge instead (wireCard handles
-  // that separately); this only engages when both fingers start on empty
-  // board area. ----
+  // ---- always fit the board to whatever screen it's on (no manual zoom) ----
   var zoomWrap = document.getElementById("zoomWrap");
   var boardScale = 1;
-  var userZoom = 1, panX = 0, panY = 0;
-  var ZOOM_MIN = 1, ZOOM_MAX = 4;
-  // the scale actually applied on screen right now — every place that
-  // converts a screen coordinate into a whiteboard coordinate (dragging a
-  // card, dropping a tray card, drawing) needs THIS, not the bare fit-scale,
-  // or that math goes wrong the moment the user has pinch-zoomed in.
-  function viewScale(){ return boardScale * userZoom; }
-
-  function applyBoardTransform(){
-    // #whiteboard's CSS sets transform-origin:0 0 (top-left) — the left/top
-    // centering math below assumes that origin; don't override it here.
-    whiteboard.style.transform = "translate(" + panX + "px, " + panY + "px) scale(" + viewScale() + ")";
-  }
-  function clampPan(){
-    var maxPan = 500 * userZoom;
-    panX = Math.max(-maxPan, Math.min(maxPan, panX));
-    panY = Math.max(-maxPan, Math.min(maxPan, panY));
-  }
-  function resetBoardZoom(){
-    userZoom = 1; panX = 0; panY = 0;
-    applyBoardTransform();
-  }
-
   function fitToScreen(){
     var availW = zoomWrap.clientWidth;
     var availH = zoomWrap.clientHeight;
     var natW = whiteboard.offsetWidth, natH = whiteboard.offsetHeight;
     if(!natW || !natH || !availW || !availH) return;
-    boardScale = Math.min(availW/natW, availH/natH);
+    var scale = Math.min(availW/natW, availH/natH);
+    boardScale = scale;
+    whiteboard.style.transform = "scale(" + scale + ")";
     whiteboard.style.position = "absolute";
-    whiteboard.style.left = ((availW - natW*boardScale)/2) + "px";
-    whiteboard.style.top = ((availH - natH*boardScale)/2) + "px";
-    applyBoardTransform();
+    whiteboard.style.left = ((availW - natW*scale)/2) + "px";
+    whiteboard.style.top = ((availH - natH*scale)/2) + "px";
   }
   function scheduleFit(){
     [0, 120, 350, 800, 1600, 3000].forEach(function(ms){ setTimeout(fitToScreen, ms); });
@@ -1971,64 +1590,8 @@
   if(document.fonts && document.fonts.ready){ document.fonts.ready.then(scheduleFit); }
   if(window.ResizeObserver){ new ResizeObserver(scheduleFit).observe(zoomWrap); }
 
-  // two-finger pinch/pan on empty board area — deliberately checked against
-  // e.target.closest(".card") so a pinch that starts on a badge is left
-  // entirely to wireCard's own (separate) pinch-to-resize handling.
-  var boardPointers = {};
-  var boardPinching = false, boardPinchStartDist = 0, boardPinchStartZoom = 1;
-  var boardPinchStartMid = null, boardPinchStartPan = null;
-  zoomWrap.addEventListener("pointerdown", function(e){
-    if(e.target.closest(".card")) return;
-    boardPointers[e.pointerId] = { x: e.clientX, y: e.clientY };
-    var ids = Object.keys(boardPointers);
-    if(ids.length === 2){
-      boardPinching = true;
-      var pts = ids.map(function(id){ return boardPointers[id]; });
-      boardPinchStartDist = pointerDist(pts[0], pts[1]);
-      boardPinchStartZoom = userZoom;
-      boardPinchStartMid = { x:(pts[0].x+pts[1].x)/2, y:(pts[0].y+pts[1].y)/2 };
-      boardPinchStartPan = { x: panX, y: panY };
-    }
-  });
-  zoomWrap.addEventListener("pointermove", function(e){
-    if(!boardPointers[e.pointerId]) return;
-    boardPointers[e.pointerId] = { x: e.clientX, y: e.clientY };
-    if(!boardPinching) return;
-    var ids = Object.keys(boardPointers);
-    if(ids.length < 2) return;
-    var pts = ids.map(function(id){ return boardPointers[id]; });
-    var dist = pointerDist(pts[0], pts[1]);
-    if(boardPinchStartDist < 1) return;
-    userZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, boardPinchStartZoom * (dist / boardPinchStartDist)));
-    var mid = { x:(pts[0].x+pts[1].x)/2, y:(pts[0].y+pts[1].y)/2 };
-    panX = boardPinchStartPan.x + (mid.x - boardPinchStartMid.x);
-    panY = boardPinchStartPan.y + (mid.y - boardPinchStartMid.y);
-    clampPan();
-    applyBoardTransform();
-  });
-  function endBoardPointer(e){
-    delete boardPointers[e.pointerId];
-    if(Object.keys(boardPointers).length < 2) boardPinching = false;
-    if(userZoom <= 1.01) resetBoardZoom();
-  }
-  zoomWrap.addEventListener("pointerup", endBoardPointer);
-  zoomWrap.addEventListener("pointercancel", endBoardPointer);
-
-  // ---- persistence: manual Save/Load, not auto-sync-per-action (see below) ----
-  var STORE_KEY = "mdb_production_board_v4";
-  var applyingRemote = false;
-  // identifies "was this update caused by MY last save" so the realtime
-  // echo of my own write doesn't trigger a full re-render — comparing full
-  // JSON strings doesn't work for this: Postgres's jsonb column doesn't
-  // preserve key order, so the echoed data almost never string-matches
-  // what was sent, even though it's the exact same write. A random id
-  // tagged onto the save and compared on its own sidesteps that entirely.
-  var lastPushedSaveId = null;
-  // see pushPreparedState's success handler — a hard time-window backstop
-  // so this device can never blank itself right after its own successful
-  // save, even if a realtime echo somehow isn't recognized by saveId.
-  var lastLocalSaveAt = 0;
-  var LOCAL_SAVE_GUARD_MS = 4000;
+  // ---- persistence: this browser's localStorage only, nothing shared ----
+  var STORE_KEY = "mdb_temp_board_v1";
   // tracks whether the canvas has any actual ink on it — drawCanvas.toDataURL()
   // is always truthy (even blank), so this flag is what tells load/save whether
   // a drawing-only board state is real content or just an empty canvas.
@@ -2045,7 +1608,6 @@
         ezoId: el.dataset.ezoId||null,
         description: el.dataset.description||null,
         scale: parseFloat(el.dataset.scale)||1,
-        hideBar: el.dataset.hideBar==="1",
         inTray: false
       };
     });
@@ -2056,7 +1618,6 @@
         category: el.dataset.category||null,
         ezoId: el.dataset.ezoId||null,
         description: el.dataset.description||null,
-        hideBar: el.dataset.hideBar==="1",
         inTray: true
       };
     });
@@ -2082,7 +1643,7 @@
         makeTrayCard(c);
         return;
       }
-      var newCard = makeCard(c.label, x, y, c.photo, c.type, c.fontSize, c.color, c.fontFamily, c.category, c.scale, c.hideBar);
+      var newCard = makeCard(c.label, x, y, c.photo, c.type, c.fontSize, c.color, c.fontFamily, c.category, c.scale);
       if(c.ezoId) newCard.dataset.ezoId = c.ezoId;
       if(c.description) newCard.dataset.description = c.description;
     });
@@ -2104,202 +1665,32 @@
     });
   }
 
-  // editing is local-only (and cached to localStorage) until someone
-  // deliberately hits Save — no network round trip per drag, and no way for
-  // a stale/backgrounded tab to silently overwrite the live board just by
-  // waking up, since nothing ever reaches the server except a deliberate
-  // click. hasUnsavedChanges tracks whether THIS device has local edits
-  // that haven't been pushed yet.
-  var hasUnsavedChanges = false;
-  var realtimeSubscribed = false;
-
   function saveState(){
     try{
       var state = currentStateObj();
       localStorage.setItem(STORE_KEY, JSON.stringify(state));
-      if(applyingRemote) return; // a remote render just happened; not a real local edit
-      hasUnsavedChanges = true;
     }catch(e){}
   }
 
-  // stay comfortably under Vercel's ~4.5MB request body limit — this is
-  // what pushToServer() checks before every save, not just when someone
-  // remembers to click "Shrink Photos" separately.
-  var SAVE_BUDGET_BYTES = 3.5*1024*1024;
-
-  // the ONLY thing that ever pushes to the server — triggered by the Save
-  // button. Whatever this device currently shows becomes the new source of
-  // truth for everyone once this succeeds.
-  function pushToServer(){
-    var token = getToken();
-    if(!token) return Promise.reject(new Error("locked"));
-    var state = currentStateObj();
-    // self-healing: if this save would be too big to even reach the server,
-    // shrink every photo automatically and rebuild the payload — Save
-    // should never depend on someone remembering a separate cleanup step.
-    var prep = JSON.stringify(state).length > SAVE_BUDGET_BYTES
-      ? shrinkAllCardPhotos().then(function(){ state = currentStateObj(); })
-      : Promise.resolve();
-    return prep.then(function(){ return pushPreparedState(state); });
-  }
-  function pushPreparedState(state){
-    state.saveId = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    lastPushedSaveId = state.saveId;
-    var token = getToken();
-    return fetch("/api/save-board", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({ data: state })
-    }).then(function(r){
-      if(r.status === 401){
-        // token expired or was revoked — force re-lock so this device
-        // re-authenticates instead of silently failing to save forever.
-        setUnlocked(false);
-        openPinModal();
-        throw new Error("unauthorized");
-      }
-      if(!r.ok){
-        return r.text().then(function(t){
-          throw new Error("HTTP " + r.status + (t ? ": " + t.slice(0,300) : ""));
-        });
-      }
-      hasUnsavedChanges = false;
-      // any remote change that arrived while we had unsaved edits is now
-      // moot — our save just became the newer source of truth.
-      pendingRemoteState = null;
-      // belt-and-suspenders on top of the saveId echo check below: for a
-      // few seconds after OUR OWN save, refuse to let any realtime update
-      // trigger a full renderState() on this device, even if something
-      // slips past the saveId match. This device's board just became
-      // correct by definition — it should never blank itself right after.
-      lastLocalSaveAt = Date.now();
-    });
-  }
-
-  // pulls the current server state onto this device (discarding any local
-  // edits that were never saved) and, from that point on, keeps this tab
-  // live via realtime — so a device only needs to Load once (e.g. at the
-  // start of the day) to stay current without ever touching Save itself.
-  function pullFromServer(){
-    return sb.from("board_state").select("data").eq("id",1).single().then(function(res){
-      if(res.data && res.data.data && ((res.data.data.cards && res.data.data.cards.length) || res.data.data.hasDrawing || (res.data.data.jobs && res.data.data.jobs.some(function(j){return j.name;})))){
-        applyingRemote = true;
-        renderState(res.data.data);
-        applyingRemote = false;
-      } else {
-        seedDefaults();
-      }
-      hasUnsavedChanges = false;
-      pendingRemoteState = null;
-      if(!realtimeSubscribed){
-        subscribeRealtime();
-        realtimeSubscribed = true;
-      }
-    });
-  }
-
-  // renderState() tears the whole board down and rebuilds it — if that
-  // happens while THIS device is mid-drag, or while it has local edits that
-  // haven't been saved yet, it'd yank a card out from under the user or
-  // silently wipe out work they haven't pushed. Both cases just hold the
-  // incoming update instead of applying it. Once the drag ends, the pending
-  // update is discarded — the very edit that just finished already marked
-  // hasUnsavedChanges, so it'll stay held until this device Saves (at which
-  // point it's moot, our save superseded it) or Loads (which overwrites
-  // everything with the current server state anyway).
-  var dragActive = false;
-  var pendingRemoteState = null;
-  function applyRemoteState(data){
-    if(dragActive || hasUnsavedChanges){ pendingRemoteState = data; return; }
-    if(Date.now() - lastLocalSaveAt < LOCAL_SAVE_GUARD_MS){ return; } // see lastLocalSaveAt above
-    applyingRemote = true;
-    renderState(data);
-    applyingRemote = false;
-  }
-  function endLocalDrag(){
-    dragActive = false;
-    pendingRemoteState = null;
-  }
-
-  // also debounce rapid bursts of updates (e.g. a background sync writing
-  // several changes) into a single render instead of rebuilding the board
-  // once per event — each rebuild reloads every badge photo from scratch,
-  // which is real, visible cost with 100+ badges on a slow device.
-  var realtimeDebounceTimer = null;
-  var latestRemoteData = null;
-  function subscribeRealtime(){
-    sb.channel("board_state_changes")
-      .on("postgres_changes", { event:"UPDATE", schema:"public", table:"board_state" }, function(payload){
-        if(payload.new.data && payload.new.data.saveId && payload.new.data.saveId === lastPushedSaveId) return;
-        latestRemoteData = payload.new.data;
-        if(realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
-        realtimeDebounceTimer = setTimeout(function(){
-          realtimeDebounceTimer = null;
-          var data = latestRemoteData;
-          latestRemoteData = null;
-          applyRemoteState(data);
-        }, 200);
-      })
-      .subscribe();
-  }
-
-  // paint whatever this device last saw immediately (instant, no network
-  // wait), then pull the real current server state on top of it and go
-  // live — every device "just works" on open, same as before, with zero
-  // clicks needed. The Load button is only for forcing a manual refresh
-  // (e.g. if a tab's been backgrounded a long time and might have missed
-  // realtime events). Only SAVING is manual now — that's what actually
-  // fixes both the per-drag network lag and the stale-tab-overwrite bug,
-  // since nothing pushes to the server except a deliberate Save click.
-  setTimeout(function(){
+  // first-ever load (nothing in localStorage yet): pull whatever badges
+  // are currently available and drop them straight in the tray. Every load
+  // after that just restores from localStorage — pullBadges() only adds
+  // NEW badges (see the "🔄 Pull Badges" button) so it's never called
+  // automatically again after the initial seed.
+  function loadState(){
     try{
       var raw = localStorage.getItem(STORE_KEY);
-      if(raw){ renderState(JSON.parse(raw)); }
+      if(raw){ renderState(JSON.parse(raw)); return; }
     }catch(e){}
-    pullFromServer().catch(function(){});
-  }, 150);
-
-  var saveBoardBtn = document.getElementById("saveBoardBtn");
-  saveBoardBtn.addEventListener("click", function(){
-    if(!unlocked) return;
-    saveBoardBtn.disabled = true; saveBoardBtn.textContent = "Saving…";
-    pushToServer().then(function(){
-      saveBoardBtn.textContent = "✅ Saved";
-      setTimeout(function(){ saveBoardBtn.disabled=false; saveBoardBtn.textContent="💾 Save"; }, 1200);
-    }).catch(function(err){
-      saveBoardBtn.textContent = "❌ Failed";
-      // a failed save means nothing reached the server — the board is still
-      // sitting on unsaved local changes. Say so explicitly instead of just
-      // flashing "Failed" for a second and moving on, since clicking Load
-      // right after a failed save is exactly what throws that work away.
-      showToast("Save failed: " + (err && err.message ? err.message : "unknown error") + " — changes are NOT saved. Don't click Load until Save succeeds.", true);
-      setTimeout(function(){ saveBoardBtn.disabled=false; saveBoardBtn.textContent="💾 Save"; }, 1500);
-    });
-  });
-
-  var loadBoardBtn = document.getElementById("loadBoardBtn");
-  function doLoad(){
-    loadBoardBtn.disabled = true; loadBoardBtn.textContent = "Loading…";
-    pullFromServer().then(function(){
-      loadBoardBtn.textContent = "✅ Loaded";
-      setTimeout(function(){ loadBoardBtn.disabled=false; loadBoardBtn.textContent="⬇️ Load"; }, 1200);
-    }).catch(function(){
-      loadBoardBtn.textContent = "❌ Failed";
-      setTimeout(function(){ loadBoardBtn.disabled=false; loadBoardBtn.textContent="⬇️ Load"; }, 1500);
-    });
+    pullBadges();
   }
-  loadBoardBtn.addEventListener("click", function(){
-    // Load overwrites everything on this device with the server's copy —
-    // if there are edits here that never made it to the server (e.g. a
-    // failed Save), loading right now would throw them away silently.
-    if(hasUnsavedChanges){
-      customConfirm("This device has changes that haven't been saved yet. Loading will throw them away. Load anyway?").then(function(ok){
-        if(ok) doLoad();
-      });
-      return;
-    }
-    doLoad();
-  });
+
+  // dragActive just flags "a gesture is in progress" for wireCard/wireTrayCard's
+  // dragging-active class — there's no remote state to guard against here.
+  var dragActive = false;
+  function endLocalDrag(){ dragActive = false; }
+
+  setTimeout(loadState, 150);
 
 })();
 </script>

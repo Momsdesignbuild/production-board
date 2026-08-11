@@ -3,9 +3,12 @@
 // null` instead of leaving the card alone, wiping out ~150 badges' photos
 // at once. This re-pulls fresh signed URLs straight from EZO/OneDrive one
 // more time (matched by the ezoId already stored on each card) and embeds
-// them permanently, same as migrate-photos was supposed to do. Only touches
-// cards that currently have no photo — anything already showing an image
-// (including a manually-added one) is left completely alone.
+// them permanently, same as migrate-photos was supposed to do. By default
+// only touches cards that currently have no photo; pass ?force=1 to
+// re-pull and overwrite EVERY matched card's photo (for fixing stale/wrong
+// photos, not just missing ones). Cards with no ezoId match (custom-added
+// badges) are always left alone. ?dryRun=1 previews the target list
+// without fetching images or writing anything.
 
 import crypto from "node:crypto";
 import assetsHandler from "./assets.js";
@@ -111,7 +114,25 @@ export default async function handler(req, res) {
     const state = (rows[0] && rows[0].data) || {};
     const cards = state.cards || [];
 
-    const targets = cards.filter((c) => !c.photo && c.ezoId && freshById[String(c.ezoId)]);
+    // force=1 re-pulls EVERY matched card's photo (not just ones missing a
+    // photo) — used to fix stale/wrong photos, not just recover lost ones.
+    // Only touches card.photo; label/position/ezoId/inTray are never read
+    // or written here. dryRun=1 previews the target list without fetching
+    // images or writing to the DB.
+    const force = String((req.query || {}).force || "") === "1";
+    const dryRun = String((req.query || {}).dryRun || "") === "1";
+    const targets = cards.filter((c) => c.type === "p" && (force || !c.photo) && c.ezoId && freshById[String(c.ezoId)]);
+
+    if (dryRun) {
+      res.status(200).json({
+        ok: true,
+        dryRun: true,
+        force,
+        totalCards: cards.length,
+        wouldUpdate: targets.map((c) => ({ label: c.label, ezoId: c.ezoId, hadPhoto: !!c.photo })),
+      });
+      return;
+    }
 
     let recovered = 0;
     let stillMissing = 0;
