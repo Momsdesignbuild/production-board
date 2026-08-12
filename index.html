@@ -381,14 +381,13 @@
   body:not(.unlocked) #devModeBtn{ display:flex; }
 
   #exitFsBtn{
-    display:none; position:fixed; left:14px; top:14px; z-index:70;
+    display:flex; position:fixed; left:14px; top:14px; z-index:70;
     width:40px; height:40px; border-radius:50%; border:none;
     background:rgba(255,255,255,0.92); color:#111; font-size:18px;
     align-items:center; justify-content:center; cursor:pointer;
     box-shadow:0 2px 10px rgba(0,0,0,0.35); opacity:0.55; transition:opacity 0.15s;
   }
   #exitFsBtn:hover{ opacity:1; }
-  body.isFullscreen #exitFsBtn{ display:flex; }
 
   /* ---------- bottom expandable tool menu (dev only) ---------- */
   #toolMenuWrap{ position:fixed; right:14px; top:14px; z-index:60; display:none; }
@@ -1961,12 +1960,23 @@
   }
   scheduleFit();
   window.addEventListener("resize", scheduleFit);
+  var exitFsBtn = document.getElementById("exitFsBtn");
+  function syncFsBtn(){
+    var isFs = !!document.fullscreenElement;
+    exitFsBtn.title = isFs ? "Exit full screen" : "Enter full screen";
+  }
   document.addEventListener("fullscreenchange", scheduleFit);
   document.addEventListener("fullscreenchange", function(){
     document.body.classList.toggle("isFullscreen", !!document.fullscreenElement);
+    syncFsBtn();
   });
-  document.getElementById("exitFsBtn").addEventListener("click", function(){
+  syncFsBtn();
+  // stays visible whether in fullscreen or not — click toggles: exits if
+  // currently fullscreen, re-enters if not (previously vanished entirely on
+  // exit, leaving no way back in except a hard refresh).
+  exitFsBtn.addEventListener("click", function(){
     if(document.fullscreenElement) document.exitFullscreen();
+    else tryFullscreen();
   });
   if(document.fonts && document.fonts.ready){ document.fonts.ready.then(scheduleFit); }
   if(window.ResizeObserver){ new ResizeObserver(scheduleFit).observe(zoomWrap); }
