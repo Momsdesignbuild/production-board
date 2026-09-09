@@ -2655,6 +2655,21 @@ function initBoard(JOB_ROWS){
   var trenchSendBtn = document.getElementById("trenchSendBtn");
   var trenchShopChosen = null; // null = server default (pinned only)
   var trenchCrew = "trench";
+  var TRENCH_COOLDOWN_MS = 15000;
+  var trenchSentAt = { trench: 0, hammer: 0 }; // per board — sending Trench doesn't block Hammer
+  var trenchCooldownTimer = null;
+  function trenchCooldownTick(){
+    var left = Math.ceil((trenchSentAt[trenchCrew] + TRENCH_COOLDOWN_MS - Date.now()) / 1000);
+    if(left > 0){
+      trenchSendBtn.disabled = true;
+      trenchSendBtn.textContent = "⏳ Sent — again in " + left + "s";
+      trenchCooldownTimer = setTimeout(trenchCooldownTick, 250);
+    } else {
+      trenchSendBtn.disabled = false;
+      trenchSendBtn.textContent = "📧 Send to Cherilyn";
+    }
+  }
+  function startTrenchCooldown(){ if(trenchCooldownTimer) clearTimeout(trenchCooldownTimer); trenchCooldownTick(); }
   var trenchHints = {
     trench: "Built from today's board. Crews under each job are what's on the board right now — only Shop needs a human.",
     hammer: "Built from this morning's BuilderTrend punches (first punch per carpenter). Empty until the crews clock in."
@@ -2664,6 +2679,7 @@ function initBoard(JOB_ROWS){
       trenchCrew = tab.dataset.crew; trenchShopChosen = null;
       Array.prototype.forEach.call(document.querySelectorAll(".trenchTab"), function(t){ t.classList.toggle("active", t === tab); });
       document.getElementById("trenchHint").textContent = trenchHints[trenchCrew];
+      startTrenchCooldown();
       loadTrench();
     });
   });
@@ -2696,10 +2712,12 @@ function initBoard(JOB_ROWS){
     if(!unlocked) return;
     trenchShopChosen = null;
     trenchOverlay.classList.add("show");
+    startTrenchCooldown();
     loadTrench();
   });
   document.getElementById("trenchCloseBtn").addEventListener("click", function(){ trenchOverlay.classList.remove("show"); });
   trenchSendBtn.addEventListener("click", function(){
+    if(Date.now() - trenchSentAt[trenchCrew] < TRENCH_COOLDOWN_MS) return;
     var src = trenchPreview.querySelector(".tt");
     if(!src){ showToast("Nothing to send yet.", true); return; }
     trenchSendBtn.disabled = true; trenchSendBtn.textContent = "Rendering…";
@@ -2716,9 +2734,10 @@ function initBoard(JOB_ROWS){
       }).then(function(r){ return r.json(); });
     }).then(function(res){
       if(res.error) throw new Error(res.error);
-      trenchSendBtn.textContent = "✅ Sent";
-      showToast(res.name + " sent to " + res.to);
-      setTimeout(function(){ trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send to Cherilyn"; }, 2500);
+      trenchSentAt[trenchCrew] = Date.now();
+      showToast("✅ " + res.name + " sent to " + res.to);
+      trenchOverlay.classList.remove("show");
+      startTrenchCooldown();
     }).catch(function(err){
       cap.innerHTML = "";
       trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send to Cherilyn";
