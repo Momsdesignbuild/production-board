@@ -74,16 +74,28 @@ export default async function handler(req, res) {
       return;
     }
 
-    const lastLane = {}; // ezoId -> { date, laneId }
+    const lastLane = {}; // ezoId -> { date, laneId, key }
     const lastSeen = {}; // ezoId -> latest card (for label/category)
+
+    // A lane is a row on the board; a JOB is whatever name sits in that row
+    // (typed or picked from the tracker — both are just text). If the name
+    // in the row changes, the badge is on a new job even though it never
+    // moved, so the counter must restart. Key = lane + normalized job name.
+    const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const laneKey = (laneId, jobs) => {
+      const m = /^job(\d+)/.exec(laneId);
+      return m ? laneId + "|" + norm(jobs[Number(m[1])]?.name) : laneId;
+    };
 
     for (const day of days) {
       const cards = (day.data && day.data.cards) || [];
+      const jobs = (day.data && day.data.jobs) || [];
       for (const card of cards) {
         if (!card.ezoId || !card.laneId) continue;
+        const key = laneKey(card.laneId, jobs);
         const prev = lastLane[card.ezoId];
-        if (!prev || prev.laneId !== card.laneId) {
-          lastLane[card.ezoId] = { date: day.date, laneId: card.laneId };
+        if (!prev || prev.key !== key) {
+          lastLane[card.ezoId] = { date: day.date, laneId: card.laneId, key };
         }
         lastSeen[card.ezoId] = card;
       }
