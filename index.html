@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
     --bg:#0b0d10;
@@ -326,7 +327,7 @@
   }
   #traySearchInput::placeholder{ color:var(--muted); }
   #addBadgeBtn{ margin-left:auto; }
-  #instructionsBtn, #loadBoardBtn, #saveBoardBtn{
+  #instructionsBtn, #trenchBtn, #loadBoardBtn, #saveBoardBtn{
     width:auto; margin:0; padding:4px 10px; font-size:12px; border-radius:8px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text); font-weight:600;
     vertical-align:middle;
@@ -334,7 +335,7 @@
   #saveBoardBtn{ background:var(--accent); border-color:var(--accent); color:#08131c; }
   #loadBoardBtn:disabled, #saveBoardBtn:disabled{ opacity:0.6; }
   body:not(.unlocked) #saveBoardBtn{ display:none; }
-  body:not(.unlocked) #instructionsBtn{ display:none; }
+  body:not(.unlocked) #instructionsBtn, body:not(.unlocked) #trenchBtn{ display:none; }
   #addBadgeBtn{ width:auto; margin:0; padding:7px 14px; font-size:12px; border-radius:8px; background:var(--accent); border-color:var(--accent); color:#08131c; font-weight:700; }
   #trayGridRow{ display:flex; align-items:stretch; gap:10px; flex:1; min-height:0; }
   #trayGrid{
@@ -460,6 +461,19 @@
   .modalOverlay.show{ display:flex; }
   .modal{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px; width:320px; text-align:center; max-height:80vh; overflow-y:auto; }
   .modal h3{ margin:0 0 16px 0; font-size:18px; }
+  #trenchModal{ width:min(960px, 94vw); text-align:left; }
+  #trenchModal .row{ display:flex; gap:16px; align-items:flex-start; }
+  #trenchPreviewWrap{ flex:1; overflow:auto; max-height:60vh; background:#fff; border-radius:8px; padding:6px; }
+  #trenchPreviewWrap .tt{ zoom:0.62; }
+  #trenchSide{ width:250px; font-size:12px; }
+  #trenchSide h4{ margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); }
+  #trenchShop label{ display:flex; gap:8px; align-items:center; padding:4px 0; cursor:pointer; }
+  #trenchShop .where{ color:var(--muted); font-size:11px; margin-left:auto; }
+  #trenchTo{ width:100%; box-sizing:border-box; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:13px; margin:6px 0 10px; }
+  #trenchSendBtn{ width:100%; margin:0; padding:10px; font-weight:700; border-radius:8px; background:var(--accent); border:1px solid var(--accent); color:#08131c; }
+  #trenchSendBtn:disabled{ opacity:0.5; }
+  #trenchCloseBtn{ position:absolute; top:10px; right:10px; width:28px; height:28px; padding:0; margin:0; border-radius:50%; font-size:13px; line-height:1; background:var(--panel2); }
+  #trenchCapture{ position:fixed; left:-20000px; top:0; }
   #pinDots{ display:flex; gap:12px; justify-content:center; margin-bottom:20px; }
   #pinDots span{ width:16px;height:16px;border-radius:50%; border:2px solid var(--muted); }
   #pinDots span.filled{ background:var(--accent); border-color:var(--accent); }
@@ -476,7 +490,7 @@
 <div id="app">
 
   <div id="boardWrap">
-    <h1>MDB Production Board <span id="clock"></span> <button id="instructionsBtn" title="How to use the board">📖 Instructions</button> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button> <button id="calendarBtn" title="View history or plan a future day">📅 Calendar</button> <button id="analyticsBtn" title="How long has each badge been on its current job">📊 Analytics</button></h1>
+    <h1>MDB Production Board <span id="clock"></span> <button id="instructionsBtn" title="How to use the board">📖 Instructions</button> <button id="trenchBtn" title="Build today's Trench Time from the board and email it">🚜 Trench Time</button> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button> <button id="calendarBtn" title="View history or plan a future day">📅 Calendar</button> <button id="analyticsBtn" title="How long has each badge been on its current job">📊 Analytics</button></h1>
     <div id="viewOnlyNotice">Viewing live — editing is locked on this device.</div>
     <div id="dateViewNotice" style="display:none;"></div>
 
@@ -690,6 +704,24 @@
   </div>
 </div>
 
+<div class="modalOverlay" id="trenchOverlay">
+  <div class="modal" id="trenchModal" style="position:relative;">
+    <button id="trenchCloseBtn" title="Close">✕</button>
+    <h3>🚜 Trench Time</h3>
+    <div class="hint" style="margin-bottom:10px;">Built from today's board. Crews under each job are what's on the board right now — only Shop needs a human.</div>
+    <div class="row">
+      <div id="trenchPreviewWrap"><div id="trenchPreview">Loading…</div></div>
+      <div id="trenchSide">
+        <h4>Who's in the shop today</h4>
+        <div id="trenchShop"></div>
+        <h4 style="margin-top:14px;">Send to</h4>
+        <input id="trenchTo" type="email" placeholder="name@momsdesignbuild.com">
+        <button id="trenchSendBtn">📧 Send Trench Time</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="trenchCapture"></div>
 <div class="modalOverlay" id="analyticsOverlay">
   <div class="modal" id="analyticsModal">
     <button id="analyticsCloseBtn" title="Close">✕</button>
@@ -2613,6 +2645,72 @@ function initBoard(JOB_ROWS){
 
   document.getElementById("instructionsBtn").addEventListener("click", function(){
     showToast("📖 Instructions — coming soon");
+  });
+
+  // ---------- trench time ----------
+  var trenchOverlay = document.getElementById("trenchOverlay");
+  var trenchPreview = document.getElementById("trenchPreview");
+  var trenchShop = document.getElementById("trenchShop");
+  var trenchTo = document.getElementById("trenchTo");
+  var trenchSendBtn = document.getElementById("trenchSendBtn");
+  var trenchShopChosen = null; // null = server default (pinned only)
+  try{ trenchTo.value = localStorage.getItem("trenchTo") || ""; }catch(e){}
+  function loadTrench(){
+    var url = "/api/analytics?crew=trench" + (trenchShopChosen ? "&shop=" + encodeURIComponent(trenchShopChosen.join(",")) : "");
+    trenchPreview.textContent = "Loading…";
+    return fetch(url).then(function(r){ return r.json(); }).then(function(res){
+      if(res.error){ trenchPreview.textContent = "Error: " + res.error; return; }
+      trenchPreview.innerHTML = res.html;
+      trenchShopChosen = res.shop;
+      trenchShop.textContent = "";
+      res.candidates.forEach(function(c){
+        var lab = document.createElement("label");
+        var cb = document.createElement("input"); cb.type = "checkbox"; cb.value = c.name; cb.checked = res.shop.indexOf(c.name) > -1;
+        cb.addEventListener("change", function(){
+          trenchShopChosen = Array.prototype.map.call(trenchShop.querySelectorAll("input:checked"), function(i){ return i.value; });
+          loadTrench();
+        });
+        var nm = document.createElement("span"); nm.textContent = c.name + (c.pinned ? " 📌" : "");
+        var wh = document.createElement("span"); wh.className = "where"; wh.textContent = c.where;
+        lab.appendChild(cb); lab.appendChild(nm); lab.appendChild(wh); trenchShop.appendChild(lab);
+      });
+    }).catch(function(err){ trenchPreview.textContent = "Couldn't build the board: " + err.message; });
+  }
+  document.getElementById("trenchBtn").addEventListener("click", function(){
+    if(!unlocked) return;
+    trenchShopChosen = null;
+    trenchOverlay.classList.add("show");
+    loadTrench();
+  });
+  document.getElementById("trenchCloseBtn").addEventListener("click", function(){ trenchOverlay.classList.remove("show"); });
+  trenchSendBtn.addEventListener("click", function(){
+    var to = trenchTo.value.trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){ showToast("Enter an email address first.", true); return; }
+    var src = trenchPreview.querySelector(".tt");
+    if(!src){ showToast("Nothing to send yet.", true); return; }
+    try{ localStorage.setItem("trenchTo", to); }catch(e){}
+    trenchSendBtn.disabled = true; trenchSendBtn.textContent = "Rendering…";
+    // capture a full-size copy off-screen (the preview is zoomed out)
+    var cap = document.getElementById("trenchCapture");
+    cap.innerHTML = ""; var clone = src.cloneNode(true); clone.style.zoom = "1"; cap.appendChild(clone);
+    html2canvas(clone, { scale: 2, backgroundColor: "#ffffff", useCORS: true }).then(function(canvas){
+      cap.innerHTML = "";
+      trenchSendBtn.textContent = "Sending…";
+      return fetch("/api/analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + getToken() },
+        body: JSON.stringify({ crew: "trench", to: to, shop: trenchShopChosen, png: canvas.toDataURL("image/png") })
+      }).then(function(r){ return r.json(); });
+    }).then(function(res){
+      if(res.error) throw new Error(res.error);
+      trenchSendBtn.textContent = "✅ Sent to " + res.to;
+      showToast("Trench Time sent to " + res.to);
+      setTimeout(function(){ trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send Trench Time"; }, 2500);
+    }).catch(function(err){
+      cap.innerHTML = "";
+      trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send Trench Time";
+      showToast("Send failed: " + err.message, true);
+    });
   });
 
   // ---------- analytics ----------
