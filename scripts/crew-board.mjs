@@ -105,7 +105,8 @@ const card = (c, name) => {
 };
 const html = `<!doctype html><meta charset="utf-8"><style>
   @page { size: letter; margin: 0.35in; }
-  body { font-family: "Century Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif; color:#333; margin:0; }
+  body { font-family: "Century Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif; color:#333; margin:0; background:#fff; }
+  .page { width:880px; margin:0 auto; padding:18px 0; } /* letter width minus margins at 96dpi — same canvas for PDF and PNG */
   .hdr { display:flex; border:2px solid #333; }
   .hdr .l { flex:1; padding:8px 22px; border-right:2px solid #333; }
   .hdr h1 { font-weight:300; font-size:40px; letter-spacing:1px; margin:0; color:#555; }
@@ -116,16 +117,16 @@ const html = `<!doctype html><meta charset="utf-8"><style>
   .chip { color:#fff; font-weight:800; font-size:11px; text-align:center; padding:6px 4px; }
   .grp { margin-top:6px; page-break-inside:avoid; }
   .cards { display:flex; flex-wrap:wrap; gap:8px; padding:0 4px 4px; }
-  .card { width:88px; }
-  .card img { width:88px; display:block; }
+  .card { width:100px; }
+  .card img { width:100px; display:block; }
   .cap { font-size:8px; font-weight:700; text-align:center; margin-top:2px; }
-  .noimg { width:88px; height:104px; background:#eee; color:#333; font-size:11px; font-weight:700; text-align:center; display:flex; align-items:center; justify-content:center; }
+  .noimg { width:100px; height:118px; background:#eee; color:#333; font-size:11px; font-weight:700; text-align:center; display:flex; align-items:center; justify-content:center; }
   .bar { color:#fff; font-weight:800; font-size:18px; text-align:center; padding:7px; }
 </style>
-<div class="hdr"><div class="l"><h1>${cfg.title}</h1><h2>${dayLine}</h2></div>
+<div class="page"><div class="hdr"><div class="l"><h1>${cfg.title}</h1><h2>${dayLine}</h2></div>
 <div class="k"><b>KEY</b><div class="chips">${cfg.legend.map(([l, c]) => `<div class="chip" style="background:${colors[c]}">${l}</div>`).join("")}</div></div></div>
 ${spec.map((g) => `<div class="grp"><div class="cards">${g.members.map((n, i) => card(g.cards[i], n)).join("")}</div><div class="bar" style="background:${colors[g.color]}">${g.name}</div></div>`).join("")}
-${spec.length ? "" : `<p style="margin-top:40px;font-size:18px">No ${BOARD} crew placed on the board today.</p>`}`;
+${spec.length ? "" : `<p style="margin-top:40px;font-size:18px">No ${BOARD} crew placed on the board today.</p>`}</div>`;
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
 const base = path.join(OUT_DIR, `${cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate}`);
@@ -133,7 +134,7 @@ const tmpHtml = path.join(os.tmpdir(), `crew-${BOARD}.html`);
 fs.writeFileSync(tmpHtml, html);
 execFileSync(CHROME, ["--headless", "--disable-gpu", "--no-pdf-header-footer", `--print-to-pdf=${base}.pdf`, `file://${tmpHtml}`], { stdio: "ignore" });
 // PNG too — same page, letter proportions at 2x, cropped to content by Chrome
-execFileSync(CHROME, ["--headless", "--disable-gpu", "--hide-scrollbars", "--window-size=1275,1650", "--force-device-scale-factor=2", `--screenshot=${base}.png`, `file://${tmpHtml}`], { stdio: "ignore" });
+execFileSync(CHROME, ["--headless", "--disable-gpu", "--hide-scrollbars", "--window-size=920,1190", "--force-device-scale-factor=2", `--screenshot=${base}.png`, `file://${tmpHtml}`], { stdio: "ignore" });
 fs.writeFileSync(`${base}.txt`, [
   `${cfg.title} — ${dayLine}`, `board saved ${rows[0]?.updated_at}`, "",
   ...spec.map((g) => `${g.name.padEnd(22)} ${g.color.padEnd(7)} ${g.members.join(", ")}`), "", "--- receipt ---", ...receipt, "",
