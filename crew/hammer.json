@@ -1,0 +1,29 @@
+{
+  "title": "HAMMER TIME",
+  "colors": {
+    "RED": "#dc2323",
+    "GREY": "#404040"
+  },
+  "legend": [
+    [
+      "RED CREW",
+      "RED"
+    ],
+    [
+      "GREY CREW",
+      "GREY"
+    ]
+  ],
+  "officeIgnore": [
+    "Cara Anderson",
+    "Kelly Lindell"
+  ],
+  "jobRenames": {
+    "General": "Shop"
+  },
+  "shopCrew": "GREY",
+  "pinned": {
+    "Mike Weckman": "Shop"
+  },
+  "roster": "hammer-map.json"
+}

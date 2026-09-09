@@ -1,0 +1,50 @@
+{
+  "_note": "Stable crew→color map (derived from the Jul 8 board). Person → their crew color. Update on new hires / crew moves. The daily job is read live from the time clock; this only maps people to crew identity. LANDSCAPE ONLY — carpenters live in hammer-map.json (rosters must stay disjoint). 7/13: Elvin Omana moved BLUE→GREEN (Cherilyn boards him on Jahnz w/ GREEN crew; punched Jahnz Fri 7/10). 7/13: Kelly Lindell REMOVED (Fine Gardens manager — punches HQ/Shop daily but is parked off-board in Cherilyn's vsdx, never a Trench card).",
+  "crews": {
+    "GREEN": {
+      "lead": "Ryan Venne",
+      "members": [
+        "Ryan Venne",
+        "Alexis Nunez",
+        "Jose Navarro Alba",
+        "Elvin Omana"
+      ]
+    },
+    "RED": {
+      "lead": "Marvin Lokken",
+      "members": [
+        "Marvin Lokken",
+        "Eathan Lokken",
+        "Gavin McRae",
+        "Hayden Matchan"
+      ]
+    },
+    "YELLOW": {
+      "lead": "Adrian Palacios",
+      "members": [
+        "Adrian Palacios",
+        "Pedro Jimenez",
+        "Dalber Arellano Vargas",
+        "Yelsi Arellano Vargas"
+      ]
+    },
+    "BLUE": {
+      "lead": "Blake Kleven",
+      "members": [
+        "Blake Kleven",
+        "Maxwell Weckman",
+        "Todd Burrell",
+        "Andrew Stier"
+      ]
+    },
+    "GREY": {
+      "lead": "Joe Smyth",
+      "members": [
+        "Joe Smyth",
+        "Chris Moller",
+        "Tony Clapp",
+        "Alex Birkenbeuel"
+      ]
+    }
+  }
+}

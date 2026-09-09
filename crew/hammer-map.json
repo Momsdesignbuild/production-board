@@ -1,0 +1,7 @@
+{
+  "_note": "Carpentry (R&C) roster — Hammer Time board. Derived from Cherilyn's Hammer Time 7.13.2026 board. DISJOINT from crew-map.json: a person lives on exactly one board. Lokkens/Hayden Matchan/Maxwell Weckman have photo cards in the Hammer vsdx too but are landscape crew (crew-map.json) — move them here only if they permanently switch to carpentry. RED vs GREY membership inferred from ONE board (7/13) — confirm with Cherilyn.",
+  "crews": {
+    "RED": { "lead": "Kegan Matchan", "members": ["Kegan Matchan", "Justin Joos", "Corey Landgraff", "Blaze Rundle", "Korey Roeser"] },
+    "GREY": { "lead": "Mike Weckman", "members": ["Mike Weckman"] }
+  }
+}

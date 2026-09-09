@@ -1,0 +1,50 @@
+{
+  "title": "TRENCH TIME",
+  "colors": {
+    "RED": "#dc2323",
+    "YELLOW": "#ddc816",
+    "BLUE": "#2221dd",
+    "GREEN": "#008001",
+    "ORANGE": "#ff9601",
+    "TEAL": "#2cd1d2",
+    "GREY": "#404040"
+  },
+  "legend": [
+    [
+      "RED CREW",
+      "RED"
+    ],
+    [
+      "YELLOW CREW",
+      "YELLOW"
+    ],
+    [
+      "BLUE CREW",
+      "BLUE"
+    ],
+    [
+      "GREEN CREW",
+      "GREEN"
+    ],
+    [
+      "WORK ORDER",
+      "ORANGE"
+    ],
+    [
+      "LV LIGHTING",
+      "TEAL"
+    ]
+  ],
+  "officeIgnore": [
+    "Cara Anderson",
+    "Kelly Lindell"
+  ],
+  "jobRenames": {
+    "General": "Shop"
+  },
+  "shopCrew": "GREY",
+  "pinned": {
+    "Joe Smyth": "Shop"
+  },
+  "roster": "crew-map.json"
+}
