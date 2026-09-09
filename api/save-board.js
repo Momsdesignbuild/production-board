@@ -1,3 +1,4 @@
+import { todayStr } from "../lib/today.js";
 // The only path allowed to write board_state now — the browser used to talk
 // to Supabase directly with the (necessarily public) anon key, which meant
 // anyone who viewed page source could write/delete board data with no auth
@@ -68,5 +69,25 @@ export default async function handler(req, res) {
     res.status(200).json({ ok: true });
   } catch (err) {
     res.status(502).json({ error: err.message });
+    return;
+  }
+
+  // best-effort: mirror today's live save into board_history so the
+  // history/calendar view has a same-day snapshot. Never blocks or fails
+  // the response above — the live save already succeeded by this point.
+  try {
+    const today = todayStr();
+    await fetch(`${SUPABASE_URL}/rest/v1/board_history`, {
+      method: "POST",
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify({ date: today, data, updated_at: new Date().toISOString() }),
+    });
+  } catch (err) {
+    console.error("board_history snapshot failed (non-fatal):", err.message);
   }
 }

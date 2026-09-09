@@ -326,7 +326,7 @@
   }
   #traySearchInput::placeholder{ color:var(--muted); }
   #addBadgeBtn{ margin-left:auto; }
-  #loadBoardBtn, #saveBoardBtn{
+  #instructionsBtn, #loadBoardBtn, #saveBoardBtn{
     width:auto; margin:0; padding:4px 10px; font-size:12px; border-radius:8px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text); font-weight:600;
     vertical-align:middle;
@@ -334,6 +334,7 @@
   #saveBoardBtn{ background:var(--accent); border-color:var(--accent); color:#08131c; }
   #loadBoardBtn:disabled, #saveBoardBtn:disabled{ opacity:0.6; }
   body:not(.unlocked) #saveBoardBtn{ display:none; }
+  body:not(.unlocked) #instructionsBtn{ display:none; }
   #addBadgeBtn{ width:auto; margin:0; padding:7px 14px; font-size:12px; border-radius:8px; background:var(--accent); border-color:var(--accent); color:#08131c; font-weight:700; }
   #trayGridRow{ display:flex; align-items:stretch; gap:10px; flex:1; min-height:0; }
   #trayGrid{
@@ -372,6 +373,37 @@
   #sidebar{ display:none; }
 
   #viewOnlyNotice{ text-align:center; padding:4px 6px 8px; color:var(--muted); font-size:12px; flex:none; }
+  #dateViewNotice{ text-align:center; padding:6px; font-size:13px; font-weight:600; flex:none; }
+  #dateViewNotice.history{ background:#3a1f1f; color:#ff9a9a; }
+  #dateViewNotice.future{ background:#1f3a2a; color:#9affb0; }
+  #calendarModal{ width:360px; position:relative; }
+  #analyticsModal{ width:420px; position:relative; text-align:left; }
+  #analyticsModal h3{ text-align:center; }
+  #analyticsCloseBtn{ position:absolute; top:10px; right:10px; width:28px; height:28px; padding:0; margin:0; border-radius:50%; font-size:13px; line-height:1; background:var(--panel2); }
+  #analyticsSummary{ display:flex; gap:10px; margin-bottom:14px; font-size:12px; }
+  #analyticsSummary span{ background:var(--panel2); border-radius:8px; padding:6px 10px; }
+  #analyticsList{ max-height:340px; overflow-y:auto; }
+  .analyticsRow{ padding:8px 4px; border-bottom:1px solid var(--line); font-size:13px; display:flex; flex-direction:column; gap:2px; }
+  .analyticsRow .aTop{ display:flex; justify-content:space-between; font-weight:600; }
+  .analyticsRow .aLane{ font-size:11px; color:var(--muted); }
+  .analyticsRow.warn .aTop{ color:#ffb84d; }
+  .analyticsRow.alert .aTop{ color:#ff6a6a; }
+  #calendarCloseBtn{ position:absolute; top:10px; right:10px; width:28px; height:28px; padding:0; margin:0; border-radius:50%; font-size:13px; line-height:1; background:var(--panel2); }
+  #calendarQuickRow{ display:flex; gap:6px; margin-bottom:14px; margin-top:6px; }
+  #calendarQuickRow button{ flex:1; font-size:11px; padding:8px 2px; margin:0; }
+  #calendarNav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  #calendarNav button{ width:36px; height:36px; padding:0; margin:0; font-size:18px; }
+  #calMonthLabel{ font-weight:700; font-size:14px; }
+  #calWeekdays{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; font-size:10px; color:var(--muted); text-align:center; margin-bottom:4px; }
+  #calGrid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:10px; }
+  .calCell{ aspect-ratio:1; border-radius:6px; border:1px solid var(--line); background:var(--panel2); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; font-size:11px; padding:0; margin:0; color:var(--text); }
+  .calCell .calDayNum{ font-weight:600; }
+  .calCell .calMark{ font-size:10px; line-height:1; }
+  .calCell.calPad{ visibility:hidden; cursor:default; }
+  .calCell.calHasData .calMark{ color:#7cf29a; }
+  .calCell.calNoData .calMark{ color:#ff8a8a; }
+  .calCell.calToday{ border-color:var(--accent); }
+  .calCell.calToday .calMark{ color:var(--accent); }
   #devModeBtn{
     display:none; position:fixed; right:14px; top:14px; z-index:60;
     width:48px; height:48px; border-radius:50%; background:#5fc2ff; color:#08131c;
@@ -442,8 +474,9 @@
 <div id="app">
 
   <div id="boardWrap">
-    <h1>MDB Production Board <span id="clock"></span> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button></h1>
+    <h1>MDB Production Board <span id="clock"></span> <button id="instructionsBtn" title="How to use the board">📖 Instructions</button> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button> <button id="calendarBtn" title="View history or plan a future day">📅 Calendar</button> <button id="analyticsBtn" title="How long has each badge been on its current job">📊 Analytics</button></h1>
     <div id="viewOnlyNotice">Viewing live — editing is locked on this device.</div>
+    <div id="dateViewNotice" style="display:none;"></div>
 
     <div id="zoomWrap">
     <div id="whiteboard">
@@ -635,8 +668,43 @@
   </div>
 </div>
 
+<div class="modalOverlay" id="calendarOverlay">
+  <div class="modal" id="calendarModal">
+    <button id="calendarCloseBtn" title="Close">✕</button>
+    <h3>Board History</h3>
+    <div id="calendarQuickRow">
+      <button id="calQuickYesterday">Yesterday</button>
+      <button id="calQuickToday">Today (live)</button>
+      <button id="calQuickTomorrow">Tomorrow</button>
+    </div>
+    <div id="calendarNav">
+      <button id="calPrevMonth">‹</button>
+      <div id="calMonthLabel"></div>
+      <button id="calNextMonth">›</button>
+    </div>
+    <div id="calWeekdays"></div>
+    <div id="calGrid"></div>
+    <div class="hint" id="calendarHint"></div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="analyticsOverlay">
+  <div class="modal" id="analyticsModal">
+    <button id="analyticsCloseBtn" title="Close">✕</button>
+    <h3>Job Analytics</h3>
+    <div class="hint" style="margin-bottom:10px;">How long each badge has sat on its current job. Only badges currently in a job lane or slot are shown.</div>
+    <div id="analyticsSummary"></div>
+    <div id="analyticsList"></div>
+  </div>
+</div>
+
 <script>
-(function(){
+// job_rows now comes from the active frame_templates row instead of being
+// hardcoded — this function is the entire board, unchanged, just taking the
+// row layout as a parameter. See the bootstrap fetch at the bottom of this
+// script for what happens if that fetch fails (falls back to today's exact
+// 8-row default, so a broken template endpoint can't take the board down).
+function initBoard(JOB_ROWS){
   "use strict";
 
   // blocks the browser's native pull-to-refresh. CSS overscroll-behavior
@@ -757,17 +825,6 @@
     if(!deviceId){ deviceId = crypto.randomUUID(); localStorage.setItem(DEVICE_ID_KEY, deviceId); }
   }catch(e){ deviceId = "unknown"; }
 
-  var JOB_ROWS = [
-    { name:"", color:"blue" },
-    { name:"", color:"blue" },
-    { name:"", color:"blue" },
-    { name:"", color:"blue" },
-    { name:"", color:"blue" },
-    { name:"", color:"blue" },
-    { name:"", color:"blue" },
-    { name:"", color:"blue" }
-  ];
-
   var whiteboard = document.getElementById("whiteboard");
   var wbMain = document.getElementById("wbMain");
   var boardWrap = document.getElementById("boardWrap");
@@ -860,6 +917,12 @@
   // ---- clock / date ----
   function tick(){
     var now = new Date();
+    // midnight on a TV left on: pull the new day's board (promotes any plan)
+    var dayNow = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+    if(tick.lastDay && dayNow !== tick.lastDay && typeof pullFromServer === "function" && !hasUnsavedChanges && (typeof isLiveView !== "function" || isLiveView())){
+      pullFromServer().catch(function(){});
+    }
+    tick.lastDay = dayNow;
     document.getElementById("clock").textContent = now.toLocaleTimeString(undefined,{hour:'2-digit', minute:'2-digit'});
     document.getElementById("boardDate").textContent = (now.getMonth()+1) + " / " + now.getDate() + " / " + now.getFullYear();
   }
@@ -2044,6 +2107,24 @@
   // a drawing-only board state is real content or just an empty canvas.
   var hasDrawing = false;
 
+  // which job (if any) a badge is physically sitting on, captured from
+  // the browser's real layout at save time — a server function has no
+  // DOM and can't recompute this from x/y alone, since row heights and
+  // the grid's fr-columns only resolve to real pixels once rendered.
+  // This is what makes "how long has this dumpster been on job X"
+  // answerable at all; see api/analytics.js.
+  function computeLaneId(el){
+    var r = el.getBoundingClientRect();
+    var cx = r.left + r.width/2, cy = r.top + r.height/2;
+    for(var key in laneEls){
+      var laneEl = laneEls[key];
+      if(!laneEl) continue;
+      var lr = laneEl.getBoundingClientRect();
+      if(cx >= lr.left && cx <= lr.right && cy >= lr.top && cy <= lr.bottom) return key;
+    }
+    return null;
+  }
+
   function currentStateObj(){
     var cards = Array.prototype.map.call(cardLayer.querySelectorAll(".card"), function(el){
       return {
@@ -2056,7 +2137,8 @@
         description: el.dataset.description||null,
         scale: parseFloat(el.dataset.scale)||1,
         hideBar: el.dataset.hideBar==="1",
-        inTray: false
+        inTray: false,
+        laneId: computeLaneId(el)
       };
     });
     var trayCards = Array.prototype.map.call(trayGrid.querySelectorAll(".card"), function(el){
@@ -2191,6 +2273,8 @@
   // live via realtime — so a device only needs to Load once (e.g. at the
   // start of the day) to stay current without ever touching Save itself.
   function pullFromServer(){
+    // day rollover first: a plan saved for today becomes the live board
+    return fetch("/api/promote-plan", { method:"POST" }).catch(function(){}).then(function(){
     return sb.from("board_state").select("data").eq("id",1).single().then(function(res){
       if(res.data && res.data.data && ((res.data.data.cards && res.data.data.cards.length) || res.data.data.hasDrawing || (res.data.data.jobs && res.data.data.jobs.some(function(j){return j.name;})))){
         applyingRemote = true;
@@ -2205,6 +2289,7 @@
         subscribeRealtime();
         realtimeSubscribed = true;
       }
+    });
     });
   }
 
@@ -2273,7 +2358,8 @@
   saveBoardBtn.addEventListener("click", function(){
     if(!unlocked) return;
     saveBoardBtn.disabled = true; saveBoardBtn.textContent = "Saving…";
-    pushToServer().then(function(){
+    var saveTask = isLiveView() ? pushToServer() : pushFutureDate(viewingDate);
+    saveTask.then(function(){
       saveBoardBtn.textContent = "✅ Saved";
       setTimeout(function(){ saveBoardBtn.disabled=false; saveBoardBtn.textContent="💾 Save"; }, 1200);
     }).catch(function(err){
@@ -2289,6 +2375,11 @@
 
   var loadBoardBtn = document.getElementById("loadBoardBtn");
   function doLoad(){
+    viewingDate = null;
+    dateViewNotice.style.display = "none";
+    dateViewNotice.className = "";
+    loadBoardBtn.style.display = "";
+    if(unlocked) saveBoardBtn.style.display = "";
     loadBoardBtn.disabled = true; loadBoardBtn.textContent = "Loading…";
     pullFromServer().then(function(){
       loadBoardBtn.textContent = "✅ Loaded";
@@ -2298,19 +2389,302 @@
       setTimeout(function(){ loadBoardBtn.disabled=false; loadBoardBtn.textContent="⬇️ Load"; }, 1500);
     });
   }
+  function doLoadCurrent(){
+    // Load always means "the date I'm currently on" — today when live,
+    // or whatever date the calendar preview is showing. It should never
+    // silently jump back to today out from under a future-date preview.
+    if(isLiveView()){ doLoad(); return; }
+    loadBoardBtn.disabled = true; loadBoardBtn.textContent = "Loading…";
+    var d = viewingDate;
+    loadDateView(d);
+    setTimeout(function(){ loadBoardBtn.disabled=false; loadBoardBtn.textContent="⬇️ Load"; }, 600);
+  }
   loadBoardBtn.addEventListener("click", function(){
     // Load overwrites everything on this device with the server's copy —
     // if there are edits here that never made it to the server (e.g. a
     // failed Save), loading right now would throw them away silently.
     if(hasUnsavedChanges){
       customConfirm("This device has changes that haven't been saved yet. Loading will throw them away. Load anyway?").then(function(ok){
-        if(ok) doLoad();
+        if(ok) doLoadCurrent();
       });
       return;
     }
-    doLoad();
+    doLoadCurrent();
   });
 
+  // ---------- calendar / history / future-planning ----------
+  // viewingDate is null when live (today, normal realtime behavior).
+  // When set, the board shows a snapshot for that date instead — read-only
+  // for past dates, editable-but-not-live for future ones. Badge x/y
+  // placement itself is untouched by any of this; only which snapshot of
+  // that placement data is on screen changes.
+  var viewingDate = null;
+  var dateViewNotice = document.getElementById("dateViewNotice");
+
+  function todayLocalStr(){
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  function isLiveView(){ return !viewingDate || viewingDate === todayLocalStr(); }
+
+  function pushFutureDate(date){
+    var state = currentStateObj();
+    var token = getToken();
+    return fetch("/api/board-history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify({ date: date, data: state })
+    }).then(function(r){
+      if(!r.ok){
+        return r.text().then(function(t){ throw new Error("HTTP " + r.status + (t ? ": " + t.slice(0,300) : "")); });
+      }
+      hasUnsavedChanges = false;
+    });
+  }
+
+  function loadDateView(date){
+    fetch("/api/board-history?date=" + encodeURIComponent(date))
+      .then(function(r){
+        if(!r.ok) return r.json().then(function(j){ throw new Error(j.error || ("HTTP " + r.status)); });
+        return r.json();
+      })
+      .then(function(res){
+        viewingDate = res.date;
+        applyingRemote = true;
+        renderState(res.data || { cards: [], jobs: [], drawing: null, hasDrawing: false });
+        applyingRemote = false;
+        hasUnsavedChanges = false;
+
+        if(res.isToday){
+          dateViewNotice.style.display = "none";
+          dateViewNotice.className = "";
+        } else if(res.editable && res.hasPlan){
+          dateViewNotice.style.display = "block";
+          dateViewNotice.className = "future";
+          dateViewNotice.textContent = "📅 Planning " + res.date + " — showing the saved plan for this date. Save overwrites it.";
+        } else if(res.editable){
+          dateViewNotice.style.display = "block";
+          dateViewNotice.className = "future";
+          dateViewNotice.textContent = "📅 " + res.date + " isn't planned yet — showing today's current board as a starting point. Save to create a plan for this date.";
+        } else {
+          dateViewNotice.style.display = "block";
+          dateViewNotice.className = "history";
+          dateViewNotice.textContent = res.data
+            ? "🕓 Preview of " + res.date + " — history is read-only. Use the calendar to jump elsewhere, or Today to go live."
+            : "🕓 No snapshot recorded for " + res.date + ".";
+        }
+
+        // past dates are pure preview: no Load, no Save.
+        // an unplanned future day (no saved plan yet) gets Save only — Load
+        // has nothing on the server to pull back that's different from what's
+        // already showing. Once a plan exists (hasPlan), Load reloads it.
+        loadBoardBtn.style.display = (res.isToday || res.hasPlan) ? "" : "none";
+        if(unlocked){
+          saveBoardBtn.style.display = res.editable ? "" : "none";
+        }
+      })
+      .catch(function(err){
+        showToast("Couldn't load " + date + ": " + err.message, true);
+      });
+  }
+
+  var calendarOverlay = document.getElementById("calendarOverlay");
+  var calendarHint = document.getElementById("calendarHint");
+  var calGrid = document.getElementById("calGrid");
+  var calMonthLabel = document.getElementById("calMonthLabel");
+  var calViewYear, calViewMonth; // 0-indexed month, the currently-displayed grid
+  var MIN_YEAR = new Date().getFullYear() - 100;
+  var MAX_YEAR = new Date().getFullYear() + 100;
+  var WEEKDAY_LABELS = ["S","M","T","W","T","F","S"];
+  var MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  function addDaysStr(dateStr, n){
+    var d = new Date(dateStr + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0,10);
+  }
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function monthRange(year, month){
+    var start = year + "-" + pad2(month+1) + "-01";
+    var lastDay = new Date(Date.UTC(year, month+1, 0)).getUTCDate();
+    var end = year + "-" + pad2(month+1) + "-" + pad2(lastDay);
+    return { start: start, end: end, lastDay: lastDay };
+  }
+
+  (function(){
+    var w = document.getElementById("calWeekdays");
+    WEEKDAY_LABELS.forEach(function(l){ var s=document.createElement("span"); s.textContent=l; w.appendChild(s); });
+  })();
+
+  function renderCalendarMonth(){
+    calMonthLabel.textContent = MONTH_NAMES[calViewMonth] + " " + calViewYear;
+    document.getElementById("calPrevMonth").disabled = (calViewYear === MIN_YEAR && calViewMonth === 0);
+    document.getElementById("calNextMonth").disabled = (calViewYear === MAX_YEAR && calViewMonth === 11);
+    calGrid.textContent = "";
+
+    var range = monthRange(calViewYear, calViewMonth);
+    var firstWeekday = new Date(Date.UTC(calViewYear, calViewMonth, 1)).getUTCDay();
+    var today = todayLocalStr();
+    var cells = [];
+    for(var i=0;i<firstWeekday;i++) cells.push(null);
+    for(var d=1; d<=range.lastDay; d++) cells.push(range.start.slice(0,8) + pad2(d));
+
+    calendarHint.textContent = "Loading…";
+    fetch("/api/board-history-dates?start=" + range.start + "&end=" + range.end)
+      .then(function(r){ return r.json(); })
+      .then(function(res){
+        var hasData = {};
+        (res.dates || []).forEach(function(d){ hasData[d] = true; });
+        calendarHint.textContent = "";
+        cells.forEach(function(dateStr){
+          var cell = document.createElement("button");
+          cell.className = "calCell";
+          if(!dateStr){ cell.className += " calPad"; calGrid.appendChild(cell); return; }
+          var isToday = dateStr === today;
+          var mark = document.createElement("span");
+          mark.className = "calMark";
+          if(isToday){
+            mark.textContent = "●"; cell.className += " calToday";
+          } else if(hasData[dateStr]){
+            mark.textContent = "✓"; cell.className += " calHasData";
+          } else {
+            mark.textContent = "✕"; cell.className += " calNoData";
+          }
+          var num = document.createElement("span");
+          num.className = "calDayNum";
+          num.textContent = String(parseInt(dateStr.slice(8,10),10));
+          cell.appendChild(num); cell.appendChild(mark);
+          cell.addEventListener("click", function(){
+            calendarOverlay.classList.remove("show");
+            if(dateStr === today) doLoad();
+            else loadDateView(dateStr);
+          });
+          calGrid.appendChild(cell);
+        });
+      })
+      .catch(function(){ calendarHint.textContent = "Couldn't load this month's history."; });
+  }
+
+  function openCalendarAt(dateStr){
+    var d = new Date(dateStr + "T00:00:00Z");
+    calViewYear = d.getUTCFullYear();
+    calViewMonth = d.getUTCMonth();
+    renderCalendarMonth();
+    calendarOverlay.classList.add("show");
+  }
+
+  document.getElementById("calendarBtn").addEventListener("click", function(){
+    openCalendarAt(viewingDate || todayLocalStr());
+  });
+  document.getElementById("calPrevMonth").addEventListener("click", function(){
+    calViewMonth--; if(calViewMonth < 0){ calViewMonth = 11; calViewYear--; }
+    if(calViewYear < MIN_YEAR){ calViewYear = MIN_YEAR; calViewMonth = 0; }
+    renderCalendarMonth();
+  });
+  document.getElementById("calNextMonth").addEventListener("click", function(){
+    calViewMonth++; if(calViewMonth > 11){ calViewMonth = 0; calViewYear++; }
+    if(calViewYear > MAX_YEAR){ calViewYear = MAX_YEAR; calViewMonth = 11; }
+    renderCalendarMonth();
+  });
+  document.getElementById("calendarCloseBtn").addEventListener("click", function(){
+    calendarOverlay.classList.remove("show");
+  });
+  // click on the dark backdrop (not the modal card itself) closes it — same
+  // pattern used to close it via the X, just without needing to hit a target
+  calendarOverlay.addEventListener("click", function(e){
+    if(e.target === calendarOverlay) calendarOverlay.classList.remove("show");
+  });
+  document.getElementById("calQuickYesterday").addEventListener("click", function(){
+    calendarOverlay.classList.remove("show");
+    loadDateView(addDaysStr(todayLocalStr(), -1));
+  });
+  document.getElementById("calQuickToday").addEventListener("click", function(){
+    calendarOverlay.classList.remove("show");
+    doLoad();
+  });
+  document.getElementById("calQuickTomorrow").addEventListener("click", function(){
+    calendarOverlay.classList.remove("show");
+    loadDateView(addDaysStr(todayLocalStr(), 1));
+  });
+
+  document.getElementById("instructionsBtn").addEventListener("click", function(){
+    showToast("📖 Instructions — coming soon");
+  });
+
+  // ---------- analytics ----------
+  var analyticsOverlay = document.getElementById("analyticsOverlay");
+  document.getElementById("analyticsBtn").addEventListener("click", function(){
+    if(true){ showToast("📊 Analytics — coming soon"); return; } // ponytail: flip to false when analytics ships
+    var listEl = document.getElementById("analyticsList");
+    var summaryEl = document.getElementById("analyticsSummary");
+    listEl.textContent = "Loading…";
+    summaryEl.textContent = "";
+    analyticsOverlay.classList.add("show");
+    fetch("/api/analytics").then(function(r){ return r.json(); }).then(function(res){
+      if(res.error){ listEl.textContent = "Error: " + res.error; return; }
+      summaryEl.textContent = "";
+      [
+        res.daysTracked + " days tracked",
+        res.rollup.over7d + " over 7d",
+        res.rollup.over30d + " over 30d",
+        res.rollup.over90d + " over 90d"
+      ].forEach(function(t){
+        var span = document.createElement("span");
+        span.textContent = t;
+        summaryEl.appendChild(span);
+      });
+      listEl.textContent = "";
+      if(!res.items.length){ listEl.textContent = "Nothing currently sitting in a job lane/slot yet."; return; }
+      res.items.forEach(function(it){
+        var row = document.createElement("div");
+        row.className = "analyticsRow" + (it.daysInPlace >= 30 ? " alert" : (it.daysInPlace >= 7 ? " warn" : ""));
+        var top = document.createElement("div");
+        top.className = "aTop";
+        var left = document.createElement("span");
+        left.textContent = (it.label || it.ezoId) + (it.category ? " (" + it.category + ")" : "");
+        var right = document.createElement("span");
+        right.textContent = it.daysInPlace + "d";
+        top.appendChild(left); top.appendChild(right);
+        var lane = document.createElement("div");
+        lane.className = "aLane";
+        lane.textContent = it.laneLabel + " — since " + it.sinceDate;
+        row.appendChild(top); row.appendChild(lane);
+        listEl.appendChild(row);
+      });
+    }).catch(function(err){
+      listEl.textContent = "Failed: " + err.message;
+    });
+  });
+  document.getElementById("analyticsCloseBtn").addEventListener("click", function(){
+    analyticsOverlay.classList.remove("show");
+  });
+  analyticsOverlay.addEventListener("click", function(e){
+    if(e.target === analyticsOverlay) analyticsOverlay.classList.remove("show");
+  });
+
+}
+
+(function(){
+  "use strict";
+  // exact same 8-row/all-blue layout that used to be hardcoded — if the
+  // frame-template fetch fails for any reason, the board still comes up
+  // looking and behaving exactly like it always has.
+  var FALLBACK_JOB_ROWS = [
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" },
+    { name:"", color:"blue" }
+  ];
+  fetch("/api/frame-template").then(function(r){ return r.json(); }).then(function(tpl){
+    var rows = (tpl && Array.isArray(tpl.job_rows) && tpl.job_rows.length) ? tpl.job_rows : FALLBACK_JOB_ROWS;
+    initBoard(rows);
+  }).catch(function(){
+    initBoard(FALLBACK_JOB_ROWS);
+  });
 })();
 </script>
 </body>
