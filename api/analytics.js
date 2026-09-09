@@ -45,7 +45,7 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       const shop = req.query.shop === undefined ? undefined : String(req.query.shop).split(",").filter(Boolean);
       const { spec, candidates, receipt, shop: chosen, punches } = await build(shop);
-      res.status(200).json({ html: renderHtml(spec, crew.cfg, (p) => p, { fragment: true }), candidates, shop: chosen, receipt, punches: punches ?? null, groups: spec.map((g) => ({ name: g.name, color: g.color, members: g.members })), fileName: `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}` });
+      res.status(200).json({ html: renderHtml(spec, crew.cfg, (p) => p, { fragment: true }), candidates, shop: chosen, receipt, punches: punches ?? null, recipient: TRENCH_TO || null, groups: spec.map((g) => ({ name: g.name, color: g.color, members: g.members })), fileName: `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}` });
       return;
     }
 
