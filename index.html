@@ -2274,7 +2274,8 @@ function initBoard(JOB_ROWS){
   // start of the day) to stay current without ever touching Save itself.
   function pullFromServer(){
     // day rollover first: a plan saved for today becomes the live board
-    return fetch("/api/promote-plan", { method:"POST" }).catch(function(){}).then(function(){
+    // (GET today via board-history runs the promotion server-side; Vercel Hobby caps us at 12 functions, so no separate endpoint)
+    return fetch("/api/board-history?date=" + todayLocalStr()).catch(function(){}).then(function(){
     return sb.from("board_state").select("data").eq("id",1).single().then(function(res){
       if(res.data && res.data.data && ((res.data.data.cards && res.data.data.cards.length) || res.data.data.hasDrawing || (res.data.data.jobs && res.data.data.jobs.some(function(j){return j.name;})))){
         applyingRemote = true;
