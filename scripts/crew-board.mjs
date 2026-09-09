@@ -132,8 +132,10 @@ const base = path.join(OUT_DIR, `${cfg.title.replace(/\b\w+/g, (w) => w[0] + w.s
 const tmpHtml = path.join(os.tmpdir(), `crew-${BOARD}.html`);
 fs.writeFileSync(tmpHtml, html);
 execFileSync(CHROME, ["--headless", "--disable-gpu", "--no-pdf-header-footer", `--print-to-pdf=${base}.pdf`, `file://${tmpHtml}`], { stdio: "ignore" });
+// PNG too — same page, letter proportions at 2x, cropped to content by Chrome
+execFileSync(CHROME, ["--headless", "--disable-gpu", "--hide-scrollbars", "--window-size=1275,1650", "--force-device-scale-factor=2", `--screenshot=${base}.png`, `file://${tmpHtml}`], { stdio: "ignore" });
 fs.writeFileSync(`${base}.txt`, [
   `${cfg.title} — ${dayLine}`, `board saved ${rows[0]?.updated_at}`, "",
   ...spec.map((g) => `${g.name.padEnd(22)} ${g.color.padEnd(7)} ${g.members.join(", ")}`), "", "--- receipt ---", ...receipt, "",
 ].join("\n"));
-console.log(`${base}.pdf — ${spec.length} groups, ${spec.reduce((n, g) => n + g.members.length, 0)} people; ${receipt.filter((r) => r.startsWith("skip") || r.startsWith("miss")).length} flags (see .txt)`);
+console.log(`${base}.pdf + .png — ${spec.length} groups, ${spec.reduce((n, g) => n + g.members.length, 0)} people; ${receipt.filter((r) => r.startsWith("skip") || r.startsWith("miss")).length} flags (see .txt)`);
