@@ -462,6 +462,9 @@
   .modal{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px; width:320px; text-align:center; max-height:80vh; overflow-y:auto; }
   .modal h3{ margin:0 0 16px 0; font-size:18px; }
   #trenchModal{ width:min(960px, 94vw); text-align:left; }
+  #trenchTabs{ display:flex; gap:6px; margin-bottom:10px; }
+  .trenchTab{ width:auto; margin:0; padding:7px 14px; border-radius:8px; font-size:13px; font-weight:700; background:var(--panel2); border:1px solid var(--line); color:var(--text); }
+  .trenchTab.active{ background:var(--accent); border-color:var(--accent); color:#08131c; }
   #trenchModal .row{ display:flex; gap:16px; align-items:flex-start; }
   #trenchPreviewWrap{ flex:1; overflow:auto; max-height:60vh; background:#fff; border-radius:8px; padding:6px; }
   #trenchPreviewWrap .tt{ zoom:0.62; }
@@ -489,7 +492,7 @@
 <div id="app">
 
   <div id="boardWrap">
-    <h1>MDB Production Board <span id="clock"></span> <button id="instructionsBtn" title="How to use the board">📖 Instructions</button> <button id="trenchBtn" title="Build today's Trench Time from the board and email it">🚜 Trench Time</button> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button> <button id="calendarBtn" title="View history or plan a future day">📅 Calendar</button> <button id="analyticsBtn" title="How long has each badge been on its current job">📊 Analytics</button></h1>
+    <h1>MDB Production Board <span id="clock"></span> <button id="instructionsBtn" title="How to use the board">📖 Instructions</button> <button id="trenchBtn" title="Today's Trench Time (from the board) and Hammer Time (from BuilderTrend punches)">🚜 Trench + Hammer Time</button> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button> <button id="calendarBtn" title="View history or plan a future day">📅 Calendar</button> <button id="analyticsBtn" title="How long has each badge been on its current job">📊 Analytics</button></h1>
     <div id="viewOnlyNotice">Viewing live — editing is locked on this device.</div>
     <div id="dateViewNotice" style="display:none;"></div>
 
@@ -706,8 +709,9 @@
 <div class="modalOverlay" id="trenchOverlay">
   <div class="modal" id="trenchModal" style="position:relative;">
     <button id="trenchCloseBtn" title="Close">✕</button>
-    <h3>🚜 Trench Time</h3>
-    <div class="hint" style="margin-bottom:10px;">Built from today's board. Crews under each job are what's on the board right now — only Shop needs a human.</div>
+    <h3 style="margin-bottom:10px;">🚜 Trench + Hammer Time</h3>
+    <div id="trenchTabs"><button class="trenchTab active" data-crew="trench">🚜 Trench Time</button><button class="trenchTab" data-crew="hammer">🔨 Hammer Time</button></div>
+    <div class="hint" id="trenchHint" style="margin-bottom:10px;">Built from today's board. Crews under each job are what's on the board right now — only Shop needs a human.</div>
     <div class="row">
       <div id="trenchPreviewWrap"><div id="trenchPreview">Loading…</div></div>
       <div id="trenchSide">
@@ -2650,12 +2654,29 @@ function initBoard(JOB_ROWS){
   var trenchShop = document.getElementById("trenchShop");
   var trenchSendBtn = document.getElementById("trenchSendBtn");
   var trenchShopChosen = null; // null = server default (pinned only)
+  var trenchCrew = "trench";
+  var trenchHints = {
+    trench: "Built from today's board. Crews under each job are what's on the board right now — only Shop needs a human.",
+    hammer: "Built from this morning's BuilderTrend punches (first punch per carpenter). Empty until the crews clock in."
+  };
+  Array.prototype.forEach.call(document.querySelectorAll(".trenchTab"), function(tab){
+    tab.addEventListener("click", function(){
+      trenchCrew = tab.dataset.crew; trenchShopChosen = null;
+      Array.prototype.forEach.call(document.querySelectorAll(".trenchTab"), function(t){ t.classList.toggle("active", t === tab); });
+      document.getElementById("trenchHint").textContent = trenchHints[trenchCrew];
+      loadTrench();
+    });
+  });
   function loadTrench(){
-    var url = "/api/analytics?crew=trench" + (trenchShopChosen ? "&shop=" + encodeURIComponent(trenchShopChosen.join(",")) : "");
+    var url = "/api/analytics?crew=" + trenchCrew + (trenchShopChosen ? "&shop=" + encodeURIComponent(trenchShopChosen.join(",")) : "");
     trenchPreview.textContent = "Loading…";
     return fetch(url).then(function(r){ return r.json(); }).then(function(res){
       if(res.error){ trenchPreview.textContent = "Error: " + res.error; return; }
-      trenchPreview.innerHTML = res.html;
+      if(trenchCrew === "hammer" && res.punches === 0){
+        trenchPreview.innerHTML = "<div style=\"padding:40px;text-align:center;color:#333;font-size:16px\">No BuilderTrend punches yet today — the crews haven't clocked in. Check back after 7.</div>";
+      } else {
+        trenchPreview.innerHTML = res.html;
+      }
       trenchShopChosen = res.shop;
       trenchShop.textContent = "";
       res.candidates.forEach(function(c){
@@ -2691,12 +2712,12 @@ function initBoard(JOB_ROWS){
       return fetch("/api/analytics", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + getToken() },
-        body: JSON.stringify({ crew: "trench", shop: trenchShopChosen, png: canvas.toDataURL("image/png") })
+        body: JSON.stringify({ crew: trenchCrew, shop: trenchShopChosen, png: canvas.toDataURL("image/png") })
       }).then(function(r){ return r.json(); });
     }).then(function(res){
       if(res.error) throw new Error(res.error);
       trenchSendBtn.textContent = "✅ Sent";
-      showToast("Trench Time sent to " + res.to);
+      showToast(res.name + " sent to " + res.to);
       setTimeout(function(){ trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send to Cherilyn"; }, 2500);
     }).catch(function(err){
       cap.innerHTML = "";

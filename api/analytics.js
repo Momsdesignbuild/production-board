@@ -3,7 +3,8 @@
 // POST {crew, to, png} → emails the rendered board (client-rendered PNG) from Josh's MDB mailbox.
 // All folded in here because Vercel Hobby caps us at 12 functions.
 import { computeAnalytics } from "../lib/analytics.js";
-import { buildSpec, loadCrewConfig, renderHtml, dateLine, fileDate } from "../lib/crew-board.js";
+import { buildSpec, buildSpecFromPunches, loadCrewConfig, renderHtml, dateLine, fileDate } from "../lib/crew-board.js";
+import { todayStr } from "../lib/today.js";
 import { verifySession } from "../lib/session.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://lufrguiekfkhtxsgcqjo.supabase.co";
@@ -30,13 +31,21 @@ export default async function handler(req, res) {
     if (req.method === "GET" && !req.query?.crew) { res.status(200).json(await computeAnalytics(SUPABASE_URL, SERVICE_KEY)); return; }
 
     const board = String(req.query?.crew || req.body?.crew || "trench");
-    if (board !== "trench") { res.status(400).json({ error: "only trench is board-derived" }); return; }
+    if (board !== "trench" && board !== "hammer") { res.status(400).json({ error: "crew must be trench or hammer" }); return; }
     const crew = loadCrewConfig(board);
+    // trench = badge positions on the board; hammer = BuilderTrend first punches (fed by the mini)
+    const build = async (shop) => {
+      const state = await liveState();
+      if (board === "trench") return buildSpec(state, crew, shop);
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/crew_punches?date=eq.${todayStr()}&select=name,job,punched_at&order=punched_at`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+      if (!r.ok) throw new Error(`crew_punches read failed: ${r.status}`);
+      return buildSpecFromPunches(await r.json(), state, crew, shop);
+    };
 
     if (req.method === "GET") {
       const shop = req.query.shop === undefined ? undefined : String(req.query.shop).split(",").filter(Boolean);
-      const { spec, candidates, receipt, shop: chosen } = buildSpec(await liveState(), crew, shop);
-      res.status(200).json({ html: renderHtml(spec, crew.cfg, (p) => p, { fragment: true }), candidates, shop: chosen, receipt, groups: spec.map((g) => ({ name: g.name, color: g.color, members: g.members })), fileName: `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}` });
+      const { spec, candidates, receipt, shop: chosen, punches } = await build(shop);
+      res.status(200).json({ html: renderHtml(spec, crew.cfg, (p) => p, { fragment: true }), candidates, shop: chosen, receipt, punches: punches ?? null, groups: spec.map((g) => ({ name: g.name, color: g.color, members: g.members })), fileName: `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}` });
       return;
     }
 
@@ -48,14 +57,14 @@ export default async function handler(req, res) {
       const b64 = String(png || "").replace(/^data:image\/png;base64,/, "");
       if (b64.length < 1000) { res.status(400).json({ error: "missing png" }); return; }
       if (!process.env.MDB_CLIENT_SECRET) { res.status(500).json({ error: "server isn't configured (MDB_* graph vars)" }); return; }
-      const { spec } = buildSpec(await liveState(), crew, Array.isArray(shop) ? shop : undefined);
+      const { spec } = await build(Array.isArray(shop) ? shop : undefined);
       const name = `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}`;
       const lines = spec.map((g) => `${g.name}: ${g.members.join(", ")}`).join("<br>");
       const r = await fetch(`https://graph.microsoft.com/v1.0/users/${FROM}/sendMail`, {
         method: "POST", headers: { Authorization: `Bearer ${await graphToken()}`, "Content-Type": "application/json" },
         body: JSON.stringify({ saveToSentItems: true, message: {
           subject: `${name} — ${dateLine()}`,
-          body: { contentType: "HTML", content: `<p>Today's Trench Time board, generated from the production board.</p><p style="font-family:sans-serif;font-size:13px">${lines}</p>` },
+          body: { contentType: "HTML", content: `<p>Today's ${crew.cfg.title} board${board === "trench" ? ", generated from the production board" : ", from this morning's BuilderTrend punches"}.</p><p style="font-family:sans-serif;font-size:13px">${lines}</p>` },
           toRecipients: [{ emailAddress: { address: to } }],
           attachments: [{ "@odata.type": "#microsoft.graph.fileAttachment", name: `${name}.png`, contentType: "image/png", contentBytes: b64 }],
         } }),
