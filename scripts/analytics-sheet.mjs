@@ -2,7 +2,7 @@
 // to OneDrive as a view-only link. Runs on the MDB mini after the 6am rollover.
 //
 //   node scripts/analytics-sheet.mjs --api https://production-board-moms-design-build.vercel.app --out /tmp/board.xlsx
-//   node scripts/analytics-sheet.mjs --api ... --upload          # needs Graph env (see below)
+//   node scripts/analytics-sheet.mjs --direct --upload           # on the mini: DB direct + Graph env (see below)
 //
 // Graph env (only for --upload): MDB_TENANT_ID MDB_CLIENT_ID MDB_CLIENT_SECRET MDB_DRIVE_ID
 // — on the mini: `set -a; . ~/repos/moms-bot/mcp-servers/onedrive/.env.brain; set +a`.
@@ -20,9 +20,16 @@ const TZ = "America/Chicago";
 const today = new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 const stamp = new Date().toLocaleString("en-US", { timeZone: TZ });
 
-const res = await fetch(`${API}/api/analytics`);
-const data = await res.json();
-if (data.error) throw new Error("analytics API: " + data.error);
+let data;
+if (process.argv.includes("--direct")) {
+  // straight from the database — used on the mini, where the Vercel URL is SSO-protected
+  const { computeAnalytics } = await import("../lib/analytics.js");
+  data = await computeAnalytics(process.env.SUPABASE_URL || "https://lufrguiekfkhtxsgcqjo.supabase.co", process.env.SUPABASE_SERVICE_ROLE_KEY);
+} else {
+  const res = await fetch(`${API}/api/analytics`);
+  data = await res.json();
+  if (data.error) throw new Error("analytics API: " + data.error);
+}
 
 const CAT = { employee: "Crew", truck: "Truck", equipment: "Equipment", trailer: "Trailer", dumpster: "Dumpster", sign: "Sign", camera: "Camera" };
 const cat = (c) => CAT[c] || (c ? c[0].toUpperCase() + c.slice(1) : "Other");
