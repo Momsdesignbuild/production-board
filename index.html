@@ -380,6 +380,8 @@
   #analyticsModal{ width:420px; position:relative; text-align:left; }
   #analyticsModal h3{ text-align:center; }
   #analyticsCloseBtn{ position:absolute; top:10px; right:10px; width:28px; height:28px; padding:0; margin:0; border-radius:50%; font-size:13px; line-height:1; background:var(--panel2); }
+  #analyticsSheetBtn{ width:auto; margin:0 0 12px 0; padding:8px 14px; font-size:13px; font-weight:700; border-radius:8px; background:var(--accent); border:1px solid var(--accent); color:#08131c; }
+  #analyticsSheetBtn:disabled{ opacity:0.5; }
   #analyticsSummary{ display:flex; gap:10px; margin-bottom:14px; font-size:12px; }
   #analyticsSummary span{ background:var(--panel2); border-radius:8px; padding:6px 10px; }
   #analyticsList{ max-height:340px; overflow-y:auto; }
@@ -693,6 +695,7 @@
     <button id="analyticsCloseBtn" title="Close">✕</button>
     <h3>Job Analytics</h3>
     <div class="hint" style="margin-bottom:10px;">How long each badge has sat on its current job. Only badges currently in a job lane or slot are shown.</div>
+    <button id="analyticsSheetBtn" title="Open the daily analytics workbook in Excel (view only)">📗 Open in Excel</button>
     <div id="analyticsSummary"></div>
     <div id="analyticsList"></div>
   </div>
@@ -2614,8 +2617,14 @@ function initBoard(JOB_ROWS){
 
   // ---------- analytics ----------
   var analyticsOverlay = document.getElementById("analyticsOverlay");
+  var analyticsSheetUrl = null;
+  var sheetBtn = document.getElementById("analyticsSheetBtn");
+  sheetBtn.addEventListener("click", function(){
+    if(!analyticsSheetUrl){ showToast("The Excel sheet hasn't been generated yet — it builds every morning after 6am."); return; }
+    window.open(analyticsSheetUrl, "_blank", "noopener");
+  });
   document.getElementById("analyticsBtn").addEventListener("click", function(){
-    if(true){ showToast("📊 Analytics — coming soon"); return; } // ponytail: flip to false when analytics ships
+    if(location.hostname !== "localhost"){ showToast("📊 Analytics — coming soon"); return; } // ponytail: delete this line when analytics ships
     var listEl = document.getElementById("analyticsList");
     var summaryEl = document.getElementById("analyticsSummary");
     listEl.textContent = "Loading…";
@@ -2624,6 +2633,8 @@ function initBoard(JOB_ROWS){
     fetch("/api/analytics").then(function(r){ return r.json(); }).then(function(res){
       if(res.error){ listEl.textContent = "Error: " + res.error; return; }
       summaryEl.textContent = "";
+      analyticsSheetUrl = res.sheetUrl || null;
+      sheetBtn.disabled = !analyticsSheetUrl;
       [
         res.daysTracked + " days tracked",
         res.rollup.over7d + " over 7d",

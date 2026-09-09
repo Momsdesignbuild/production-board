@@ -1,0 +1,11 @@
+{
+  "name": "production-board",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  },
+  "scripts": {
+    "analytics-sheet": "node scripts/analytics-sheet.mjs"
+  }
+}

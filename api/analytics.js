@@ -104,11 +104,24 @@ export default async function handler(req, res) {
     const latestDate = days[days.length - 1].date;
     const latestJobs = (liveData && liveData.jobs) || [];
 
+    // long-format day rows for the Excel export: one row per badge per day it
+    // sat in a lane. New badges need nothing special — they're just new rows.
+    // ponytail: last 90 days only; the sheet builder can page later if needed.
+    const HISTORY_DAYS = 90;
+    const history = [];
+    for (const day of days.slice(-HISTORY_DAYS)) {
+      const jobs = (day.data && day.data.jobs) || [];
+      for (const card of (day.data && day.data.cards) || []) {
+        if (!card.ezoId || !card.laneId) continue;
+        history.push({ date: day.date, ezoId: card.ezoId, label: card.label || null, category: card.category || null, lane: laneLabel(card.laneId, jobs) });
+      }
+    }
+
     // only report items CURRENTLY in a lane — an item that moved off a lane
     // at some point in history but isn't sitting in one today has no
     // current "how long has it been here" to report.
     const items = Object.keys(lastLane)
-      .filter((ezoId) => lastSeen[ezoId] && lastSeen[ezoId].laneId)
+      .filter((ezoId) => lastSeen[ezoId] && /^job\d+/.test(lastSeen[ezoId].laneId)) // job lanes + cutouts only; pools are the yard, not a job
       .map((ezoId) => {
         const card = lastSeen[ezoId];
         const since = lastLane[ezoId].date;
@@ -124,8 +137,16 @@ export default async function handler(req, res) {
       });
     items.sort((a, b) => b.daysInPlace - a.daysInPlace);
 
+    let sheetUrl = null;
+    try {
+      const cfg = await fetch(`${SUPABASE_URL}/rest/v1/board_config?id=eq.1&select=analytics_sheet_url`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+      if (cfg.ok) sheetUrl = (await cfg.json())[0]?.analytics_sheet_url || null;
+    } catch (e) { /* link is optional */ }
+
     res.status(200).json({
       items,
+      history,
+      sheetUrl,
       daysTracked: days.length,
       earliestDate: days[0].date,
       latestDate,

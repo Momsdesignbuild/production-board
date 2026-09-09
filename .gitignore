@@ -1,3 +1,4 @@
 .vercel
 .env*
 tmp_upload/
+node_modules/
