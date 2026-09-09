@@ -469,7 +469,6 @@
   #trenchSide h4{ margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); }
   #trenchShop label{ display:flex; gap:8px; align-items:center; padding:4px 0; cursor:pointer; }
   #trenchShop .where{ color:var(--muted); font-size:11px; margin-left:auto; }
-  #trenchTo{ width:100%; box-sizing:border-box; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:13px; margin:6px 0 10px; }
   #trenchSendBtn{ width:100%; margin:0; padding:10px; font-weight:700; border-radius:8px; background:var(--accent); border:1px solid var(--accent); color:#08131c; }
   #trenchSendBtn:disabled{ opacity:0.5; }
   #trenchCloseBtn{ position:absolute; top:10px; right:10px; width:28px; height:28px; padding:0; margin:0; border-radius:50%; font-size:13px; line-height:1; background:var(--panel2); }
@@ -714,9 +713,7 @@
       <div id="trenchSide">
         <h4>Who's in the shop today</h4>
         <div id="trenchShop"></div>
-        <h4 style="margin-top:14px;">Send to</h4>
-        <input id="trenchTo" type="email" placeholder="name@momsdesignbuild.com">
-        <button id="trenchSendBtn">📧 Send Trench Time</button>
+        <button id="trenchSendBtn" style="margin-top:16px;">📧 Send to Cherilyn</button>
       </div>
     </div>
   </div>
@@ -2651,10 +2648,8 @@ function initBoard(JOB_ROWS){
   var trenchOverlay = document.getElementById("trenchOverlay");
   var trenchPreview = document.getElementById("trenchPreview");
   var trenchShop = document.getElementById("trenchShop");
-  var trenchTo = document.getElementById("trenchTo");
   var trenchSendBtn = document.getElementById("trenchSendBtn");
   var trenchShopChosen = null; // null = server default (pinned only)
-  try{ trenchTo.value = localStorage.getItem("trenchTo") || ""; }catch(e){}
   function loadTrench(){
     var url = "/api/analytics?crew=trench" + (trenchShopChosen ? "&shop=" + encodeURIComponent(trenchShopChosen.join(",")) : "");
     trenchPreview.textContent = "Loading…";
@@ -2684,11 +2679,8 @@ function initBoard(JOB_ROWS){
   });
   document.getElementById("trenchCloseBtn").addEventListener("click", function(){ trenchOverlay.classList.remove("show"); });
   trenchSendBtn.addEventListener("click", function(){
-    var to = trenchTo.value.trim();
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){ showToast("Enter an email address first.", true); return; }
     var src = trenchPreview.querySelector(".tt");
     if(!src){ showToast("Nothing to send yet.", true); return; }
-    try{ localStorage.setItem("trenchTo", to); }catch(e){}
     trenchSendBtn.disabled = true; trenchSendBtn.textContent = "Rendering…";
     // capture a full-size copy off-screen (the preview is zoomed out)
     var cap = document.getElementById("trenchCapture");
@@ -2699,16 +2691,16 @@ function initBoard(JOB_ROWS){
       return fetch("/api/analytics", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + getToken() },
-        body: JSON.stringify({ crew: "trench", to: to, shop: trenchShopChosen, png: canvas.toDataURL("image/png") })
+        body: JSON.stringify({ crew: "trench", shop: trenchShopChosen, png: canvas.toDataURL("image/png") })
       }).then(function(r){ return r.json(); });
     }).then(function(res){
       if(res.error) throw new Error(res.error);
-      trenchSendBtn.textContent = "✅ Sent to " + res.to;
+      trenchSendBtn.textContent = "✅ Sent";
       showToast("Trench Time sent to " + res.to);
-      setTimeout(function(){ trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send Trench Time"; }, 2500);
+      setTimeout(function(){ trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send to Cherilyn"; }, 2500);
     }).catch(function(err){
       cap.innerHTML = "";
-      trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send Trench Time";
+      trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send to Cherilyn";
       showToast("Send failed: " + err.message, true);
     });
   });

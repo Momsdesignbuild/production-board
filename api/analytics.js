@@ -9,6 +9,7 @@ import { verifySession } from "../lib/session.js";
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://lufrguiekfkhtxsgcqjo.supabase.co";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const FROM = process.env.MDB_MAIL_FROM || "joshuamontanez@momsdesignbuild.com"; // MDB rule: automation mail is always from Josh's MDB address
+const TRENCH_TO = process.env.TRENCH_TO || ""; // Cherilyn in production; a test address locally. Never typed in the UI.
 
 async function liveState() {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.1&select=data`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
@@ -41,8 +42,9 @@ export default async function handler(req, res) {
 
     if (req.method === "POST") {
       if (!verifySession(req.headers.authorization, process.env.SESSION_SECRET)) { res.status(401).json({ error: "unauthorized" }); return; }
-      const { to, png, shop } = req.body || {};
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(to || ""))) { res.status(400).json({ error: "bad recipient" }); return; }
+      const { png, shop } = req.body || {};
+      const to = TRENCH_TO;
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) { res.status(500).json({ error: "server isn't configured (TRENCH_TO — who receives Trench Time)" }); return; }
       const b64 = String(png || "").replace(/^data:image\/png;base64,/, "");
       if (b64.length < 1000) { res.status(400).json({ error: "missing png" }); return; }
       if (!process.env.MDB_CLIENT_SECRET) { res.status(500).json({ error: "server isn't configured (MDB_* graph vars)" }); return; }
