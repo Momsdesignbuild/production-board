@@ -462,6 +462,8 @@
   .modal{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px; width:320px; text-align:center; max-height:80vh; overflow-y:auto; }
   .modal h3{ margin:0 0 16px 0; font-size:18px; }
   #trenchModal{ width:min(960px, 94vw); text-align:left; }
+  #instructionsModal{ width:min(720px, 94vw); }
+  #instructionsModal iframe{ width:100%; aspect-ratio:16/9; border:0; border-radius:8px; display:block; margin-bottom:14px; }
   #trenchTabs{ display:flex; gap:6px; margin-bottom:10px; }
   .trenchTab{ width:auto; margin:0; padding:7px 14px; border-radius:8px; font-size:13px; font-weight:700; background:var(--panel2); border:1px solid var(--line); color:var(--text); }
   .trenchTab.active{ background:var(--accent); border-color:var(--accent); color:#08131c; }
@@ -598,6 +600,14 @@
     <button class="trayNavBtn" id="trayNextBtn">›</button>
   </div>
   <div id="trayPageLabel"></div>
+</div>
+
+<div class="modalOverlay" id="instructionsOverlay">
+  <div class="modal" id="instructionsModal">
+    <h3>📖 How to use the board</h3>
+    <iframe src="https://www.youtube.com/embed/ZIg5MMHkQ9c" title="English" allow="fullscreen"></iframe>
+    <iframe src="https://www.youtube.com/embed/k-PQJ_25Tj4" title="Español" allow="fullscreen"></iframe>
+  </div>
 </div>
 
 <div class="modalOverlay" id="pinOverlay">
@@ -2644,8 +2654,14 @@ function initBoard(JOB_ROWS){
     loadDateView(addDaysStr(todayLocalStr(), 1));
   });
 
+  var instructionsOverlay = document.getElementById("instructionsOverlay");
   document.getElementById("instructionsBtn").addEventListener("click", function(){
-    showToast("📖 Instructions — coming soon");
+    instructionsOverlay.classList.add("show");
+  });
+  instructionsOverlay.addEventListener("click", function(e){
+    if(e.target !== instructionsOverlay) return;
+    instructionsOverlay.classList.remove("show");
+    instructionsOverlay.querySelectorAll("iframe").forEach(function(f){ f.src = f.src; }); // stop playback
   });
 
   // ---------- trench time ----------
