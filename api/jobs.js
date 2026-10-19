@@ -68,13 +68,20 @@ export default async function handler(req, res) {
         // valuesOnly returns the underlying serial value as a fraction of a
         // 24-hour day (e.g. 1800:14 -> 75.0097222 "days"). Multiply by 24 to
         // get the actual hour count these cells display.
+        // Balance (col I) is the text "-272:18" when a job is over budget
+        // (the sheet formula returns "-"&TEXT(...)), so parse that too.
+        const hrs = (c) => {
+          if (typeof c === "number") return c * 24;
+          const m = /^(-?)(\d+):(\d{2})$/.exec((c || "").toString().trim());
+          return m ? (m[1] ? -1 : 1) * (+m[2] + +m[3] / 60) : null;
+        };
         jobs.push({
           section: currentSection,
           status: status,
           job: job,
-          bid: typeof row[6] === "number" ? row[6] * 24 : null,
-          act: typeof row[7] === "number" ? row[7] * 24 : null,
-          left: typeof row[8] === "number" ? row[8] * 24 : null,
+          bid: hrs(row[6]),
+          act: hrs(row[7]),
+          left: hrs(row[8]),
         });
       }
     }
