@@ -138,7 +138,11 @@
   .jobNameCell[data-filled="1"] .jobNameText{ display:block; }
   .jobNameCell[data-filled="1"] .addJobRowBtn{ display:none; }
   /* R&C board (?board=rc): own saved state + template; bottom asset boxes plain white; no history/analytics yet */
-  body.rc #assetBar > div{ background:#fff; }
+  /* R&C is just the date header + job rows down to Shop: no Dumpster/Sign/Camera, hours, Unavailable or asset bar; solid white page */
+  body.rc, body.rc #boardWrap{ background:#fff; }
+  body.rc h1{ color:#1a1a1a; }
+  body.rc #wbTop, body.rc #wbMain{ grid-template-columns:170px 1fr; }
+  body.rc #wbTop > div:nth-child(n+3), body.rc .cutoutCell, body.rc .balCell, body.rc #wbSide, body.rc #assetBar{ display:none; }
   body.rc #calendarBtn, body.rc #analyticsBtn{ display:none; }
   
   .jobRow[data-shop="1"] .addJobRowBtn, .jobRow[data-shop="1"] .balCell{ visibility:hidden; }
