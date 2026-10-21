@@ -22,8 +22,6 @@
     "General": "Shop"
   },
   "shopCrew": "GREY",
-  "pinned": {
-    "Mike Weckman": "Shop"
-  },
+  "pinned": {},
   "roster": "hammer-map.json"
 }

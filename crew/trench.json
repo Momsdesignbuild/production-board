@@ -43,8 +43,6 @@
     "General": "Shop"
   },
   "shopCrew": "GREY",
-  "pinned": {
-    "Joe Smyth": "Shop"
-  },
+  "pinned": {},
   "roster": "crew-map.json"
 }

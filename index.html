@@ -730,12 +730,12 @@
     <button id="trenchCloseBtn" title="Close">✕</button>
     <h3 style="margin-bottom:10px;">🚜 Trench + Hammer Time</h3>
     <div id="trenchTabs"><button class="trenchTab active" data-crew="trench">🚜 Trench Time</button><button class="trenchTab" data-crew="hammer">🔨 Hammer Time</button></div>
-    <div class="hint" id="trenchHint" style="margin-bottom:10px;">Built from today's board. Crews under each job are what's on the board right now — only Shop needs a human.</div>
+    <div class="hint" id="trenchHint" style="margin-bottom:10px;">Built from today's board. Crews under each job, and Shop (the bottom row), are exactly what's on the board right now.</div>
     <div class="row">
       <div id="trenchPreviewWrap"><div id="trenchPreview">Loading…</div></div>
       <div id="trenchSide">
-        <h4>Who's in the shop today</h4>
-        <div id="trenchShop"></div>
+        <h4 style="display:none;">Who's in the shop today</h4>
+        <div id="trenchShop" style="display:none;"></div>
         <button id="trenchSendBtn" style="margin-top:16px;">💬 Send to Slack</button>
       </div>
     </div>
@@ -2708,8 +2708,8 @@ function initBoard(JOB_ROWS){
   }
   function startTrenchCooldown(){ if(trenchCooldownTimer) clearTimeout(trenchCooldownTimer); trenchCooldownTick(); }
   var trenchHints = {
-    trench: "Built from today's board. Crews under each job are what's on the board right now — only Shop needs a human.",
-    hammer: "Built from the R&C board (arrow at the top). Crews under each job are what's on that board right now — Shop is its bottom row."
+    trench: "Built from today's board. Crews under each job, and Shop (the bottom row), are exactly what's on the board right now.",
+    hammer: "Built from the R&C board (arrow at the top). Crews under each job are what's on that board right now — Shop (the bottom row) is exactly what's on that board right now."
   };
   Array.prototype.forEach.call(document.querySelectorAll(".trenchTab"), function(tab){
     tab.addEventListener("click", function(){
