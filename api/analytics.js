@@ -3,8 +3,7 @@
 // POST {crew, shop, png} → posts the rendered board (client-rendered PNG) to Slack (CREW_SLACK_CHANNEL).
 // All folded in here because Vercel Hobby caps us at 12 functions.
 import { computeAnalytics } from "../lib/analytics.js";
-import { buildSpec, buildSpecFromPunches, loadCrewConfig, renderHtml, dateLine, fileDate } from "../lib/crew-board.js";
-import { todayStr } from "../lib/today.js";
+import { buildSpec, loadCrewConfig, renderHtml, dateLine, fileDate } from "../lib/crew-board.js";
 import { verifySession } from "../lib/session.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://lufrguiekfkhtxsgcqjo.supabase.co";
@@ -13,13 +12,15 @@ const SLACK_TOKEN = process.env.SLACK_BOT_TOKEN || "";
 const SLACK_CHANNEL = process.env.CREW_SLACK_CHANNEL || ""; // channel id; #mdb-bot-dev while testing. Never typed in the UI.
 const SLACK_LABEL = process.env.CREW_SLACK_LABEL || "Slack";
 
-async function liveState() {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.1&select=data`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+async function liveState(boardId = 1) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.${boardId}&select=data`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
   if (!r.ok) throw new Error(`board_state read failed: ${r.status}`);
   const data = (await r.json())[0]?.data || {};
   // rows the active template flags as the fixed Shop row (job_rows[i].shop)
-  const t = await fetch(`${SUPABASE_URL}/rest/v1/board_config?id=eq.1&select=frame_templates(job_rows)`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
-  const rows = t.ok ? (await t.json())[0]?.frame_templates?.job_rows : null;
+  const tplUrl = boardId === 2 ? `frame_templates?id=eq.00000000-0000-0000-0000-000000000002&select=job_rows` : `board_config?id=eq.1&select=frame_templates(job_rows)`;
+  const t = await fetch(`${SUPABASE_URL}/rest/v1/${tplUrl}`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+  const row = t.ok ? (await t.json())[0] : null;
+  const rows = boardId === 2 ? row?.job_rows : row?.frame_templates?.job_rows;
   data.shopRows = (rows || []).flatMap((j, i) => (j.shop ? [i] : []));
   return data;
 }
@@ -36,14 +37,8 @@ export default async function handler(req, res) {
     const board = String(req.query?.crew || req.body?.crew || "trench");
     if (board !== "trench" && board !== "hammer") { res.status(400).json({ error: "crew must be trench or hammer" }); return; }
     const crew = loadCrewConfig(board);
-    // trench = badge positions on the board; hammer = BuilderTrend first punches (fed by the mini)
-    const build = async (shop) => {
-      const state = await liveState();
-      if (board === "trench") return buildSpec(state, crew, shop);
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/crew_punches?date=eq.${todayStr()}&select=name,job,punched_at&order=punched_at`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
-      if (!r.ok) throw new Error(`crew_punches read failed: ${r.status}`);
-      return buildSpecFromPunches(await r.json(), state, crew, shop);
-    };
+    // both crew boards are badge positions: trench = LA board, hammer = R&C board
+    const build = async (shop) => buildSpec(await liveState(board === "hammer" ? 2 : 1), crew, shop);
 
     if (req.method === "GET") {
       const shop = req.query.shop === undefined ? undefined : String(req.query.shop).split(",").filter(Boolean);

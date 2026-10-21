@@ -137,6 +137,10 @@
   }
   .jobNameCell[data-filled="1"] .jobNameText{ display:block; }
   .jobNameCell[data-filled="1"] .addJobRowBtn{ display:none; }
+  /* R&C board (?board=rc): own saved state + template; bottom asset boxes plain white; no history/analytics yet */
+  body.rc #assetBar > div{ background:#fff; }
+  body.rc #calendarBtn, body.rc #analyticsBtn{ display:none; }
+  #boardSwitchBtn{ margin-right:10px; }
   .jobRow[data-shop="1"] .addJobRowBtn, .jobRow[data-shop="1"] .balCell{ visibility:hidden; }
   .addJobRowBtn{
     width:auto; margin:0; padding:6px 10px; font-size:11px;
@@ -495,7 +499,7 @@
 <div id="app">
 
   <div id="boardWrap">
-    <h1>MDB Production Board <span id="clock"></span> <button id="instructionsBtn" title="How to use the board">📖 Instructions</button> <button id="trenchBtn" title="Today's Trench Time (from the board) and Hammer Time (from BuilderTrend punches)">🚜 Trench + Hammer Time</button> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button> <button id="calendarBtn" title="View history or plan a future day">📅 Calendar</button> <button id="analyticsBtn" title="How long has each badge been on its current job">📊 Analytics</button></h1>
+    <h1><button id="boardSwitchBtn" title="Switch between the LA and R&C boards"></button>MDB Production Board <span id="boardName"></span> <span id="clock"></span> <button id="instructionsBtn" title="How to use the board">📖 Instructions</button> <button id="trenchBtn" title="Today's Trench Time (from the board) and Hammer Time (from BuilderTrend punches)">🚜 Trench + Hammer Time</button> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button> <button id="calendarBtn" title="View history or plan a future day">📅 Calendar</button> <button id="analyticsBtn" title="How long has each badge been on its current job">📊 Analytics</button></h1>
     <div id="viewOnlyNotice">Viewing live — editing is locked on this device.</div>
     <div id="dateViewNotice" style="display:none;"></div>
 
@@ -753,6 +757,14 @@
 // 8-row default, so a broken template endpoint can't take the board down).
 function initBoard(JOB_ROWS){
   "use strict";
+  // two boards share this page: LA (board_state id 1, default) and R&C (?board=rc, board_state id 2)
+  var BOARD_RC = new URLSearchParams(location.search).get("board") === "rc";
+  var BOARD_ID = BOARD_RC ? 2 : 1;
+  document.body.classList.toggle("rc", BOARD_RC);
+  document.getElementById("boardName").textContent = BOARD_RC ? "· R&C" : "· LA";
+  var boardSwitchBtn = document.getElementById("boardSwitchBtn");
+  boardSwitchBtn.textContent = BOARD_RC ? "◀ LA" : "R&C ▶";
+  boardSwitchBtn.addEventListener("click", function(){ location.search = BOARD_RC ? "" : "?board=rc"; }); // unsaved edits stay cached per board
 
   // blocks the browser's native pull-to-refresh. CSS overscroll-behavior
   // (set on html/body) doesn't reliably stop this on every mobile browser
@@ -2138,7 +2150,7 @@ function initBoard(JOB_ROWS){
   zoomWrap.addEventListener("pointercancel", endBoardPointer);
 
   // ---- persistence: manual Save/Load, not auto-sync-per-action (see below) ----
-  var STORE_KEY = "mdb_production_board_v4";
+  var STORE_KEY = BOARD_RC ? "mdb_production_board_v4_rc" : "mdb_production_board_v4";
   var applyingRemote = false;
   // identifies "was this update caused by MY last save" so the realtime
   // echo of my own write doesn't trigger a full re-render — comparing full
@@ -2291,7 +2303,7 @@ function initBoard(JOB_ROWS){
     return fetch("/api/save-board", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({ data: state })
+      body: JSON.stringify({ data: state, board: BOARD_RC ? "rc" : "la" })
     }).then(function(r){
       if(r.status === 401){
         // token expired or was revoked — force re-lock so this device
@@ -2325,8 +2337,8 @@ function initBoard(JOB_ROWS){
   function pullFromServer(){
     // day rollover first: a plan saved for today becomes the live board
     // (GET today via board-history runs the promotion server-side; Vercel Hobby caps us at 12 functions, so no separate endpoint)
-    return fetch("/api/board-history?date=" + todayLocalStr()).catch(function(){}).then(function(){
-    return sb.from("board_state").select("data").eq("id",1).single().then(function(res){
+    return (BOARD_RC ? Promise.resolve() : fetch("/api/board-history?date=" + todayLocalStr()).catch(function(){})).then(function(){
+    return sb.from("board_state").select("data").eq("id",BOARD_ID).single().then(function(res){
       if(res.data && res.data.data && ((res.data.data.cards && res.data.data.cards.length) || res.data.data.hasDrawing || (res.data.data.jobs && res.data.data.jobs.some(function(j){return j.name;})))){
         applyingRemote = true;
         renderState(res.data.data);
@@ -2376,6 +2388,7 @@ function initBoard(JOB_ROWS){
   function subscribeRealtime(){
     sb.channel("board_state_changes")
       .on("postgres_changes", { event:"UPDATE", schema:"public", table:"board_state" }, function(payload){
+        if(payload.new.id !== BOARD_ID) return;
         if(payload.new.data && payload.new.data.saveId && payload.new.data.saveId === lastPushedSaveId) return;
         latestRemoteData = payload.new.data;
         if(realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
@@ -2692,7 +2705,7 @@ function initBoard(JOB_ROWS){
   function startTrenchCooldown(){ if(trenchCooldownTimer) clearTimeout(trenchCooldownTimer); trenchCooldownTick(); }
   var trenchHints = {
     trench: "Built from today's board. Crews under each job are what's on the board right now — only Shop needs a human.",
-    hammer: "Built from this morning's BuilderTrend punches (first punch per carpenter). Empty until the crews clock in."
+    hammer: "Built from the R&C board (arrow at the top). Crews under each job are what's on that board right now — Shop is its bottom row."
   };
   Array.prototype.forEach.call(document.querySelectorAll(".trenchTab"), function(tab){
     tab.addEventListener("click", function(){
@@ -2841,7 +2854,7 @@ function initBoard(JOB_ROWS){
     { name:"", color:"blue" },
     { name:"", color:"blue" }
   ];
-  fetch("/api/frame-template").then(function(r){ return r.json(); }).then(function(tpl){
+  fetch("/api/frame-template" + (new URLSearchParams(location.search).get("board") === "rc" ? "?board=rc" : "")).then(function(r){ return r.json(); }).then(function(tpl){
     var rows = (tpl && Array.isArray(tpl.job_rows) && tpl.job_rows.length) ? tpl.job_rows : FALLBACK_JOB_ROWS;
     initBoard(rows);
   }).catch(function(){

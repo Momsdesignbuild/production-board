@@ -48,14 +48,15 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { data } = req.body || {};
+  const { data, board } = req.body || {};
+  const boardId = board === "rc" ? 2 : 1; // 1 = LA (default), 2 = R&C
   if (!data || typeof data !== "object") {
     res.status(400).json({ error: "missing data" });
     return;
   }
 
   try {
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.1`, {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.${boardId}`, {
       method: "PATCH",
       headers: {
         apikey: SERVICE_KEY,
@@ -71,6 +72,8 @@ export default async function handler(req, res) {
     res.status(502).json({ error: err.message });
     return;
   }
+
+  if (boardId !== 1) { res.status(200).json({ ok: true }); return; } // R&C has no history yet
 
   // best-effort: mirror today's live save into board_history so the
   // history/calendar view has a same-day snapshot. Never blocks or fails

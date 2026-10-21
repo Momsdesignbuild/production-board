@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     });
     if (!configResp.ok) throw new Error(`board_config read failed: ${configResp.status}`);
     const configRows = await configResp.json();
-    const activeId = configRows[0]?.active_frame_template_id;
+    const activeId = req.query?.board === "rc" ? "00000000-0000-0000-0000-000000000002" : configRows[0]?.active_frame_template_id;
     if (!activeId) {
       res.status(200).json({ id: null, name: null, job_rows: [] });
       return;

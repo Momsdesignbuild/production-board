@@ -13,3 +13,11 @@ assert.deepEqual(spec[1].members, [b]);
 const old = buildSpec({ ...state, shopRows: undefined }, crew, undefined);
 assert.ok(old.spec.some((g) => g.members.includes(b) && g.name !== "Shop"));
 console.log("shop-row test OK");
+
+// Hammer Time = R&C board's saved badges (same builder, hammer roster)
+const ham = loadCrewConfig("hammer");
+const hs = { jobs: [{ name: "Bailey R&C 2026" }, {}, {}, {}, {}, {}, {}, {}], cards: [card("Kegan Matchan", "job0"), card("Justin Joos", "job0"), card("Corey Landgraff", "job7")], shopRows: [7] };
+const h = buildSpec(hs, ham, undefined);
+assert.deepEqual(h.spec.map((g) => g.name), ["Bailey R&C", "Shop"]);
+assert.deepEqual(h.spec[1].members, ["Corey Landgraff"]);
+console.log("hammer-from-board test OK");
