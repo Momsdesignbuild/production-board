@@ -44,5 +44,11 @@
   },
   "shopCrew": "GREY",
   "pinned": {},
-  "roster": "crew-map.json"
+  "roster": "crew-map.json",
+  "ignore": [
+    "ben",
+    "MT120",
+    "Cat 255",
+    "Jobsite Cam 7"
+  ]
 }

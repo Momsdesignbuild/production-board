@@ -736,6 +736,7 @@
       <div id="trenchSide">
         <h4 style="display:none;">Who's in the shop today</h4>
         <div id="trenchShop" style="display:none;"></div>
+        <div id="trenchDropped" class="hint" style="color:#ff9b6a;"></div>
         <button id="trenchSendBtn" style="margin-top:16px;">💬 Send to Slack</button>
       </div>
     </div>
@@ -2732,6 +2733,7 @@ function initBoard(JOB_ROWS){
         trenchPreview.innerHTML = res.html;
       }
       trenchShopChosen = res.shop;
+      document.getElementById("trenchDropped").textContent = (res.dropped || []).length ? "⚠️ Not counted (not on the roster): " + res.dropped.join(", ") : "";
       trenchShop.textContent = "";
       res.candidates.forEach(function(c){
         var lab = document.createElement("label");

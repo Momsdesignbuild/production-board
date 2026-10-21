@@ -42,8 +42,8 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
       const shop = req.query.shop === undefined ? undefined : String(req.query.shop).split(",").filter(Boolean);
-      const { spec, candidates, receipt, shop: chosen, punches } = await build(shop);
-      res.status(200).json({ html: renderHtml(spec, crew.cfg, (p) => p, { fragment: true }), candidates, shop: chosen, receipt, punches: punches ?? null, recipient: SLACK_CHANNEL ? SLACK_LABEL : null, groups: spec.map((g) => ({ name: g.name, color: g.color, members: g.members })), fileName: `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}` });
+      const { spec, candidates, receipt, shop: chosen, punches, dropped } = await build(shop);
+      res.status(200).json({ html: renderHtml(spec, crew.cfg, (p) => p, { fragment: true }), candidates, shop: chosen, receipt, punches: punches ?? null, dropped: dropped || [], recipient: SLACK_CHANNEL ? SLACK_LABEL : null, groups: spec.map((g) => ({ name: g.name, color: g.color, members: g.members })), fileName: `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}` });
       return;
     }
 
@@ -53,14 +53,14 @@ export default async function handler(req, res) {
       if (!SLACK_TOKEN || !SLACK_CHANNEL) { res.status(500).json({ error: "server isn't configured (SLACK_BOT_TOKEN / CREW_SLACK_CHANNEL)" }); return; }
       const b64 = String(png || "").replace(/^data:image\/png;base64,/, "");
       if (b64.length < 1000) { res.status(400).json({ error: "missing png" }); return; }
-      const { spec } = await build(Array.isArray(shop) ? shop : undefined);
+      const { spec, dropped } = await build(Array.isArray(shop) ? shop : undefined);
       const name = `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}`;
       const lines = spec.map((g) => `*${g.name}:* ${g.members.join(", ")}`).join("\n");
       const bytes = Buffer.from(b64, "base64");
       const up = await slack("files.getUploadURLExternal", new URLSearchParams({ filename: `${name}.png`, length: String(bytes.length) }));
       const put = await fetch(up.upload_url, { method: "POST", headers: { "Content-Type": "image/png" }, body: bytes });
       if (!put.ok) throw new Error(`slack upload ${put.status}`);
-      await slack("files.completeUploadExternal", { files: [{ id: up.file_id, title: name }], channel_id: SLACK_CHANNEL, initial_comment: `${name} — ${dateLine()}\n${lines}` });
+      await slack("files.completeUploadExternal", { files: [{ id: up.file_id, title: name }], channel_id: SLACK_CHANNEL, initial_comment: `${name} — ${dateLine()}\n${lines}${dropped?.length ? `\n:warning: Not counted (not on the roster): ${dropped.join(", ")}` : ""}` });
       const to = SLACK_LABEL;
       res.status(200).json({ ok: true, to, name });
       return;

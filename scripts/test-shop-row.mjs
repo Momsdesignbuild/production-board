@@ -27,3 +27,10 @@ import { boardOf } from "../lib/boards.js";
 assert.deepEqual(boardOf(undefined), { id: 1, history: "board_history" });
 assert.deepEqual(boardOf("rc"), { id: 2, history: "board_history_rc" });
 console.log("board routing test OK");
+
+// a job-row employee badge that isn't on the roster is reported, not dropped silently
+const pagh = { jobs: [{ name: "Pagh, Kelly & Adam 2026" }], cards: [card("Julio, Ernesto & Hugo", "job0"), card("ben", "job0"), card("Some Stranger", "job0"), card(a, "job0")], shopRows: [] };
+const withGroup = buildSpec(pagh, crew, undefined);
+assert.deepEqual(withGroup.spec[0].members.slice().sort(), [a, "Julio, Ernesto & Hugo"].sort(), "group badge counts as a member");
+assert.deepEqual(withGroup.dropped, ["Some Stranger (Pagh)"], "unknown reported once; ignore-list badge is not");
+console.log("dropped-badge test OK");
