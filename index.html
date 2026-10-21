@@ -137,6 +137,7 @@
   }
   .jobNameCell[data-filled="1"] .jobNameText{ display:block; }
   .jobNameCell[data-filled="1"] .addJobRowBtn{ display:none; }
+  .jobRow[data-shop="1"] .addJobRowBtn, .jobRow[data-shop="1"] .balCell{ visibility:hidden; }
   .addJobRowBtn{
     width:auto; margin:0; padding:6px 10px; font-size:11px;
     border-radius:20px; border:1.5px dashed #9fb8d6; background:transparent;
@@ -881,6 +882,7 @@ function initBoard(JOB_ROWS){
   JOB_ROWS.forEach(function(job, idx){
     var row = document.createElement("div");
     row.className = "jobRow";
+    if(job.shop) row.dataset.shop = "1"; // template flag: this row is the fixed Shop row, not a job slot
 
     var nameCell = document.createElement("div");
     nameCell.className = "jobNameCell";
@@ -895,7 +897,7 @@ function initBoard(JOB_ROWS){
     nameCell.appendChild(addJobRowBtn);
     // once filled, clicking the job name opens a small preview (clear / search again)
     nameCell.addEventListener("click", function(){
-      if(!unlocked || nameCell.dataset.filled !== "1") return;
+      if(!unlocked || nameCell.dataset.filled !== "1" || job.shop) return;
       openJobEditPreview(idx);
     });
     row.appendChild(nameCell);
@@ -924,7 +926,7 @@ function initBoard(JOB_ROWS){
       balCell.appendChild(inp);
     });
     row.appendChild(balCell);
-    balInputs.push({ bid:bidInp, act:actInp, left:leftInp, nameCell:nameCell, jobNameText:jobNameText });
+    balInputs.push({ bid:bidInp, act:actInp, left:leftInp, nameCell:nameCell, jobNameText:jobNameText, isShop:!!job.shop });
 
     wbMain.appendChild(row);
   });
@@ -1375,11 +1377,13 @@ function initBoard(JOB_ROWS){
     }
   }
   function setJobName(slot, name){
+    if(slot.isShop) name = "Shop";
     slot.jobNameText.textContent = name;
     slot.nameCell.dataset.filled = name ? "1" : "";
     if(name){ fitText(slot.jobNameText, slot.nameCell, 20, 9); }
   }
 
+  balInputs.forEach(function(b){ if(b.isShop) setJobName(b, "Shop"); });
   function seedDefaults(){ saveState(); }
 
   // ---- badge tray: the single home for every badge not currently placed

@@ -16,7 +16,12 @@ const SLACK_LABEL = process.env.CREW_SLACK_LABEL || "Slack";
 async function liveState() {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.1&select=data`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
   if (!r.ok) throw new Error(`board_state read failed: ${r.status}`);
-  return (await r.json())[0]?.data || {};
+  const data = (await r.json())[0]?.data || {};
+  // rows the active template flags as the fixed Shop row (job_rows[i].shop)
+  const t = await fetch(`${SUPABASE_URL}/rest/v1/board_config?id=eq.1&select=frame_templates(job_rows)`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+  const rows = t.ok ? (await t.json())[0]?.frame_templates?.job_rows : null;
+  data.shopRows = (rows || []).flatMap((j, i) => (j.shop ? [i] : []));
+  return data;
 }
 async function slack(method, body) {
   const r = await fetch(`https://slack.com/api/${method}`, { method: "POST", headers: { Authorization: `Bearer ${SLACK_TOKEN}`, "Content-Type": body instanceof URLSearchParams ? "application/x-www-form-urlencoded" : "application/json" }, body: body instanceof URLSearchParams ? body : JSON.stringify(body) });
