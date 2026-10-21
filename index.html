@@ -143,7 +143,7 @@
   body.rc h1{ color:#1a1a1a; }
   body.rc #wbTop, body.rc #wbMain{ grid-template-columns:170px 1fr; }
   body.rc #wbTop > div:nth-child(n+3), body.rc .cutoutCell, body.rc .balCell, body.rc #wbSide, body.rc #assetBar{ display:none; }
-  body.rc #calendarBtn, body.rc #analyticsBtn{ display:none; }
+  body.rc #analyticsBtn{ display:none; }
   
   .jobRow[data-shop="1"] .addJobRowBtn, .jobRow[data-shop="1"] .balCell{ visibility:hidden; }
   .addJobRowBtn{
@@ -764,6 +764,7 @@ function initBoard(JOB_ROWS){
   // two boards share this page: LA (board_state id 1, default) and R&C (?board=rc, board_state id 2)
   var BOARD_RC = new URLSearchParams(location.search).get("board") === "rc";
   var BOARD_ID = BOARD_RC ? 2 : 1;
+  var BOARD_Q = BOARD_RC ? "&board=rc" : ""; // history/calendar calls follow the board
   document.body.classList.toggle("rc", BOARD_RC);
   document.getElementById("boardName").textContent = BOARD_RC ? "· R&C" : "· LA";
   var boardSwitchBtn = document.getElementById("boardSwitchBtn");
@@ -2341,7 +2342,7 @@ function initBoard(JOB_ROWS){
   function pullFromServer(){
     // day rollover first: a plan saved for today becomes the live board
     // (GET today via board-history runs the promotion server-side; Vercel Hobby caps us at 12 functions, so no separate endpoint)
-    return (BOARD_RC ? Promise.resolve() : fetch("/api/board-history?date=" + todayLocalStr()).catch(function(){})).then(function(){
+    return fetch("/api/board-history?date=" + todayLocalStr() + BOARD_Q).catch(function(){}).then(function(){
     return sb.from("board_state").select("data").eq("id",BOARD_ID).single().then(function(res){
       if(res.data && res.data.data && ((res.data.data.cards && res.data.data.cards.length) || res.data.data.hasDrawing || (res.data.data.jobs && res.data.data.jobs.some(function(j){return j.name;})))){
         applyingRemote = true;
@@ -2501,7 +2502,7 @@ function initBoard(JOB_ROWS){
     return fetch("/api/board-history", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({ date: date, data: state })
+      body: JSON.stringify({ date: date, data: state, board: BOARD_RC ? "rc" : "la" })
     }).then(function(r){
       if(!r.ok){
         return r.text().then(function(t){ throw new Error("HTTP " + r.status + (t ? ": " + t.slice(0,300) : "")); });
@@ -2511,7 +2512,7 @@ function initBoard(JOB_ROWS){
   }
 
   function loadDateView(date){
-    fetch("/api/board-history?date=" + encodeURIComponent(date))
+    fetch("/api/board-history?date=" + encodeURIComponent(date) + BOARD_Q)
       .then(function(r){
         if(!r.ok) return r.json().then(function(j){ throw new Error(j.error || ("HTTP " + r.status)); });
         return r.json();
@@ -2598,7 +2599,7 @@ function initBoard(JOB_ROWS){
     for(var d=1; d<=range.lastDay; d++) cells.push(range.start.slice(0,8) + pad2(d));
 
     calendarHint.textContent = "Loading…";
-    fetch("/api/board-history-dates?start=" + range.start + "&end=" + range.end)
+    fetch("/api/board-history-dates?start=" + range.start + "&end=" + range.end + BOARD_Q)
       .then(function(r){ return r.json(); })
       .then(function(res){
         var hasData = {};

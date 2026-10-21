@@ -7,6 +7,7 @@
 import crypto from "node:crypto";
 import { todayStr } from "../lib/today.js";
 import { promotePlan } from "../lib/promote.js";
+import { boardOf } from "../lib/boards.js";
 
 const SECRET = process.env.SESSION_SECRET;
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://lufrguiekfkhtxsgcqjo.supabase.co";
@@ -40,6 +41,7 @@ function withinRange(d) {
 }
 
 export default async function handler(req, res) {
+  const board = boardOf(req.query?.board || req.body?.board);
   if (!SERVICE_KEY) {
     res.status(500).json({ error: "server isn't configured (SUPABASE_SERVICE_ROLE_KEY)" });
     return;
@@ -55,8 +57,8 @@ export default async function handler(req, res) {
 
     try {
       if (date === today) {
-        await promotePlan(SUPABASE_URL, SERVICE_KEY); // day rollover: plan → live if not yet
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.1&select=data`, {
+        await promotePlan(SUPABASE_URL, SERVICE_KEY, board); // day rollover: plan → live if not yet
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.${board.id}&select=data`, {
           headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
         });
         if (!resp.ok) throw new Error(`board_state read failed: ${resp.status}`);
@@ -65,7 +67,7 @@ export default async function handler(req, res) {
         return;
       }
 
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/board_history?date=eq.${date}&select=data`, {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/${board.history}?date=eq.${date}&select=data`, {
         headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
       });
       if (!resp.ok) throw new Error(`board_history read failed: ${resp.status}`);
@@ -82,7 +84,7 @@ export default async function handler(req, res) {
         // current live badges forward as the starting point, same as what
         // tomorrow will actually look like if nothing changes between now
         // and then. Saving from here is what turns this into a real plan.
-        const liveResp = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.1&select=data`, {
+        const liveResp = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.${board.id}&select=data`, {
           headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
         });
         if (!liveResp.ok) throw new Error(`board_state read failed: ${liveResp.status}`);
@@ -128,7 +130,7 @@ export default async function handler(req, res) {
     }
 
     try {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/board_history`, {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/${board.history}`, {
         method: "POST",
         headers: {
           apikey: SERVICE_KEY,

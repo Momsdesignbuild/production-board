@@ -49,7 +49,7 @@ export default async function handler(req, res) {
   }
 
   const { data, board } = req.body || {};
-  const boardId = board === "rc" ? 2 : 1; // 1 = LA (default), 2 = R&C
+  const { id: boardId, history } = boardOf(board); // LA (default) or R&C
   if (!data || typeof data !== "object") {
     res.status(400).json({ error: "missing data" });
     return;
@@ -73,14 +73,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (boardId !== 1) { res.status(200).json({ ok: true }); return; } // R&C has no history yet
-
   // best-effort: mirror today's live save into board_history so the
   // history/calendar view has a same-day snapshot. Never blocks or fails
   // the response above — the live save already succeeded by this point.
   try {
     const today = todayStr();
-    await fetch(`${SUPABASE_URL}/rest/v1/board_history`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/${history}`, {
       method: "POST",
       headers: {
         apikey: SERVICE_KEY,

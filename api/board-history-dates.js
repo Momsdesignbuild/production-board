@@ -3,6 +3,8 @@
 // range, never the actual board data (which can be several MB of photos
 // per day), so painting a month view stays cheap.
 
+import { boardOf } from "../lib/boards.js";
+
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://lufrguiekfkhtxsgcqjo.supabase.co";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -28,7 +30,7 @@ export default async function handler(req, res) {
 
   try {
     const resp = await fetch(
-      `${SUPABASE_URL}/rest/v1/board_history?date=gte.${start}&date=lte.${end}&select=date`,
+      `${SUPABASE_URL}/rest/v1/${boardOf(req.query?.board).history}?date=gte.${start}&date=lte.${end}&select=date`,
       { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
     );
     if (!resp.ok) throw new Error(`board_history read failed: ${resp.status}`);

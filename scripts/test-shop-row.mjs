@@ -21,3 +21,9 @@ const h = buildSpec(hs, ham, undefined);
 assert.deepEqual(h.spec.map((g) => g.name), ["Bailey R&C", "Shop"]);
 assert.deepEqual(h.spec[1].members, ["Corey Landgraff"]);
 console.log("hammer-from-board test OK");
+
+// board routing: LA is the default, ?board=rc is its own state row + history table
+import { boardOf } from "../lib/boards.js";
+assert.deepEqual(boardOf(undefined), { id: 1, history: "board_history" });
+assert.deepEqual(boardOf("rc"), { id: 2, history: "board_history_rc" });
+console.log("board routing test OK");
