@@ -138,11 +138,11 @@
   .jobNameCell[data-filled="1"] .jobNameText{ display:block; }
   .jobNameCell[data-filled="1"] .addJobRowBtn{ display:none; }
   /* R&C board (?board=rc): own saved state + template; bottom asset boxes plain white; no history/analytics yet */
-  /* R&C is just the date header + job rows down to Shop: no Dumpster/Sign/Camera, hours, Unavailable or asset bar; solid white page */
+  /* R&C is the date header + job rows (name, badges, BID/ACT/LEFT) down to Shop: no Dumpster/Sign/Camera, Unavailable or asset bar; solid white page */
   body.rc, body.rc #boardWrap{ background:#fff; }
   body.rc h1{ color:#1a1a1a; }
-  body.rc #wbTop, body.rc #wbMain{ grid-template-columns:170px 1fr; }
-  body.rc #wbTop > div:nth-child(n+3), body.rc .cutoutCell, body.rc .balCell, body.rc #wbSide, body.rc #assetBar{ display:none; }
+  body.rc #wbTop, body.rc #wbMain{ grid-template-columns:170px 1fr 210px; }
+  body.rc #wbTop > div:nth-child(3), body.rc #wbTop > div:nth-child(4), body.rc #wbTop > div:nth-child(5), body.rc #wbTop > div:nth-child(7), body.rc .cutoutCell, body.rc #wbSide, body.rc #assetBar{ display:none; }
   body.rc #analyticsBtn{ display:none; }
   
   .jobRow[data-shop="1"] .addJobRowBtn, .jobRow[data-shop="1"] .balCell{ visibility:hidden; }
