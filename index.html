@@ -727,7 +727,7 @@
       <div id="trenchSide">
         <h4>Who's in the shop today</h4>
         <div id="trenchShop"></div>
-        <button id="trenchSendBtn" style="margin-top:16px;">📧 Send to Cherilyn</button>
+        <button id="trenchSendBtn" style="margin-top:16px;">💬 Send to Slack</button>
       </div>
     </div>
   </div>
@@ -2682,7 +2682,7 @@ function initBoard(JOB_ROWS){
       trenchCooldownTimer = setTimeout(trenchCooldownTick, 250);
     } else {
       trenchSendBtn.disabled = false;
-      trenchSendBtn.textContent = "📧 Send to Cherilyn";
+      trenchSendBtn.textContent = "💬 Send to Slack";
     }
   }
   function startTrenchCooldown(){ if(trenchCooldownTimer) clearTimeout(trenchCooldownTimer); trenchCooldownTick(); }
@@ -2756,7 +2756,7 @@ function initBoard(JOB_ROWS){
       startTrenchCooldown();
     }).catch(function(err){
       cap.innerHTML = "";
-      trenchSendBtn.disabled = false; trenchSendBtn.textContent = "📧 Send to Cherilyn";
+      trenchSendBtn.disabled = false; trenchSendBtn.textContent = "💬 Send to Slack";
       showToast("Send failed: " + err.message, true);
     });
   });
