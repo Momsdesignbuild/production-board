@@ -2264,6 +2264,7 @@ function initBoard(JOB_ROWS){
   }
 
   function renderState(state){
+    if(!state) return; // never blank the board for an update that carried no data
     cardLayer.innerHTML = "";
     trayGrid.innerHTML = "";
     (state.cards||[]).forEach(function(c){
@@ -2446,6 +2447,15 @@ function initBoard(JOB_ROWS){
     sb.channel("board_state_changes")
       .on("postgres_changes", { event:"UPDATE", schema:"public", table:"board_state" }, function(payload){
         var d = payload.new.data;
+        if(!d){ // realtime can drop a big column from the payload: read the row instead
+          var rid = payload.new.id;
+          sb.from("board_state").select("data").eq("id", rid).single().then(function(r){
+            if(!r.data || !r.data.data) return;
+            if(rid === BOARD_ID){ latestRemoteData = r.data.data; clearTimeout(realtimeDebounceTimer); realtimeDebounceTimer = setTimeout(function(){ realtimeDebounceTimer = null; var x = latestRemoteData; latestRemoteData = null; applyRemoteState(x); }, 200); }
+            else if(!MEM[BOARD_RC ? "la" : "rc"].unsaved) MEM[BOARD_RC ? "la" : "rc"].state = r.data.data;
+          });
+          return;
+        }
         if(d && d.saveId && pushedIds[d.saveId]) return;
         if(payload.new.id !== BOARD_ID){ // the board that's off screen: keep its memory current unless it holds unsaved edits
           var ok = BOARD_RC ? "la" : "rc";
