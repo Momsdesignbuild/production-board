@@ -765,7 +765,7 @@ function initBoard(JOB_ROWS){
   document.getElementById("boardName").textContent = BOARD_RC ? "· R&C" : "· LA";
   var boardSwitchBtn = document.getElementById("boardSwitchBtn");
   boardSwitchBtn.textContent = BOARD_RC ? "◀ LA" : "R&C ▶";
-  boardSwitchBtn.addEventListener("click", function(){ setToken(null); /* switching boards re-locks */ location.search = BOARD_RC ? "" : "?board=rc"; }); // unsaved edits stay cached per board
+  boardSwitchBtn.addEventListener("click", function(){ location.search = BOARD_RC ? "" : "?board=rc"; }); // unsaved edits stay cached per board
 
   // blocks the browser's native pull-to-refresh. CSS overscroll-behavior
   // (set on html/body) doesn't reliably stop this on every mobile browser
