@@ -137,12 +137,7 @@
   }
   .jobNameCell[data-filled="1"] .jobNameText{ display:block; }
   .jobNameCell[data-filled="1"] .addJobRowBtn{ display:none; }
-  /* R&C board (?board=rc): own saved state + template; bottom asset boxes plain white; no history/analytics yet */
-  /* R&C is the date header + job rows (name, badges, BID/ACT/LEFT) down to Shop: no Dumpster/Sign/Camera, Unavailable or asset bar; solid white page */
-  body.rc, body.rc #boardWrap{ background:#fff; }
-  body.rc h1{ color:#1a1a1a; }
-  body.rc #wbTop, body.rc #wbMain{ grid-template-columns:170px 1fr 210px; }
-  body.rc #wbTop > div:nth-child(3), body.rc #wbTop > div:nth-child(4), body.rc #wbTop > div:nth-child(5), body.rc #wbTop > div:nth-child(7), body.rc .cutoutCell, body.rc #wbSide, body.rc #assetBar{ display:none; }
+  /* R&C board (?board=rc): same layout as LA, own saved state + template; Analytics stays hidden (it reads LA history) */
   body.rc #analyticsBtn{ display:none; }
   
   .jobRow[data-shop="1"] .addJobRowBtn, .jobRow[data-shop="1"] .balCell{ visibility:hidden; }
@@ -770,7 +765,7 @@ function initBoard(JOB_ROWS){
   document.getElementById("boardName").textContent = BOARD_RC ? "· R&C" : "· LA";
   var boardSwitchBtn = document.getElementById("boardSwitchBtn");
   boardSwitchBtn.textContent = BOARD_RC ? "◀ LA" : "R&C ▶";
-  boardSwitchBtn.addEventListener("click", function(){ location.search = BOARD_RC ? "" : "?board=rc"; }); // unsaved edits stay cached per board
+  boardSwitchBtn.addEventListener("click", function(){ setToken(null); /* switching boards re-locks */ location.search = BOARD_RC ? "" : "?board=rc"; }); // unsaved edits stay cached per board
 
   // blocks the browser's native pull-to-refresh. CSS overscroll-behavior
   // (set on html/body) doesn't reliably stop this on every mobile browser

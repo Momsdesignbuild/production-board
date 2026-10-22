@@ -55,3 +55,13 @@ for (const f of fs.readdirSync("api").filter((x) => x.endsWith(".js"))) {
   if (/boardOf\(/.test(src)) assert.match(src, /import \{[^}]*boardOf[^}]*\} from/, f + " uses boardOf without importing it");
 }
 console.log("boardOf import test OK");
+
+// one badge, one board
+import { shareBadges } from "../lib/share.js";
+const bc = (label, inTray, laneId) => ({ type: "p", category: "employee", label, inTray, laneId: inTray ? null : laneId, x: inTray ? null : "1px", y: inTray ? null : "1px" });
+const shared = shareBadges({ cards: [bc("Kegan", false, "job0"), bc("Justin", true), { type: "t", label: "note" }] }, { cards: [bc("Kegan", false, "job2"), { type: "t", label: "other note" }] });
+assert.equal(shared.data.cards[0].inTray, true, "placed on A -> tray on B");
+assert.ok(shared.data.cards.some((c) => c.label === "Justin" && c.inTray), "missing badge appears in B's tray");
+assert.ok(!shared.data.cards.some((c) => c.label === "note"), "text cards stay per board");
+assert.equal(shareBadges({ cards: [bc("Kegan", true)] }, { cards: [bc("Kegan", false, "job2")] }).changed, 0, "A's tray never evicts B");
+console.log("share badges test OK");
