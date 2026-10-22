@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { data, board } = req.body || {};
+  const { data, board, sync } = req.body || {}; // sync:false = the client already reconciled both boards
   const { id: boardId, history } = boardOf(board); // LA (default) or R&C
   if (!data || typeof data !== "object") {
     res.status(400).json({ error: "missing data" });
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
   }
 
   // best-effort: one badge, one board — pull what this board placed out of the other board's layout
-  try {
+  if (sync !== false) try {
     const otherId = boardId === 1 ? 2 : 1;
     const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
     const [o] = await (await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.${otherId}&select=data`, { headers: h })).json();

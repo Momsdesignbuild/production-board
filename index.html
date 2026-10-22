@@ -759,13 +759,19 @@ function initBoard(JOB_ROWS){
   "use strict";
   // two boards share this page: LA (board_state id 1, default) and R&C (?board=rc, board_state id 2)
   var BOARD_RC = new URLSearchParams(location.search).get("board") === "rc";
-  var BOARD_ID = BOARD_RC ? 2 : 1;
-  var BOARD_Q = BOARD_RC ? "&board=rc" : ""; // history/calendar calls follow the board
-  document.body.classList.toggle("rc", BOARD_RC);
-  document.getElementById("boardName").textContent = BOARD_RC ? "· R&C" : "· LA";
+  var BOARD_ID, BOARD_Q, STORE_KEY; // follow the board on screen — see paintBoardChrome / switchBoard
   var boardSwitchBtn = document.getElementById("boardSwitchBtn");
-  boardSwitchBtn.textContent = BOARD_RC ? "◀ LA" : "R&C ▶";
-  boardSwitchBtn.addEventListener("click", function(){ try{ sessionStorage.setItem("mdb_pb_keep", getToken() || ""); }catch(e){} /* carry the unlock across the reload */ location.search = BOARD_RC ? "" : "?board=rc"; }); // unsaved edits stay cached per board
+  function paintBoardChrome(){
+    BOARD_ID = BOARD_RC ? 2 : 1;
+    BOARD_Q = BOARD_RC ? "&board=rc" : ""; // history/calendar calls follow the board
+    STORE_KEY = BOARD_RC ? "mdb_production_board_v4_rc" : "mdb_production_board_v4";
+    document.body.classList.toggle("rc", BOARD_RC);
+    document.getElementById("boardName").textContent = BOARD_RC ? "· R&C" : "· LA";
+    boardSwitchBtn.textContent = BOARD_RC ? "◀ LA" : "R&C ▶";
+    try{ history.replaceState(null, "", BOARD_RC ? "?board=rc" : location.pathname); }catch(e){}
+  }
+  paintBoardChrome();
+  boardSwitchBtn.addEventListener("click", function(){ switchBoard(); });
 
   // blocks the browser's native pull-to-refresh. CSS overscroll-behavior
   // (set on html/body) doesn't reliably stop this on every mobile browser
@@ -2152,8 +2158,67 @@ function initBoard(JOB_ROWS){
   zoomWrap.addEventListener("pointercancel", endBoardPointer);
 
   // ---- persistence: manual Save/Load, not auto-sync-per-action (see below) ----
-  var STORE_KEY = BOARD_RC ? "mdb_production_board_v4_rc" : "mdb_production_board_v4";
   var applyingRemote = false;
+  // both boards live in memory so switching is instant and they share one badge tray.
+  // MEM[x].unsaved = that board holds edits the server hasn't seen.
+  var MEM = { la: { state: null, unsaved: false }, rc: { state: null, unsaved: false } };
+  var pushedIds = {}; // saveIds this tab wrote, so realtime echoes of its own saves are ignored
+  // same rule as lib/share.js (server): a badge is placed on one board or sits in the shared tray; A (the board you're on) wins.
+  var bkey = function(c){ return (c.category || "") + "|" + c.label; };
+  var isBadge = function(c){ return c.type !== "t"; };
+  var toTray = function(c){ var t = {}; for(var k in c) t[k] = c[k]; t.inTray = true; t.x = null; t.y = null; t.laneId = null; return t; };
+  function reconcile(a, b){
+    var pa = {}, pb = {}, k;
+    (a.cards||[]).forEach(function(c){ if(isBadge(c) && !c.inTray) pa[bkey(c)] = 1; });
+    (b.cards||[]).forEach(function(c){ if(isBadge(c) && !c.inTray && !pa[bkey(c)]) pb[bkey(c)] = 1; });
+    var bc = (b.cards||[]).filter(function(c){ return !(isBadge(c) && pa[bkey(c)]); });
+    var ac = (a.cards||[]).filter(function(c){ return !(isBadge(c) && c.inTray && pb[bkey(c)]); });
+    var aChanged = ac.length !== (a.cards||[]).length, bChanged = bc.length !== (b.cards||[]).length;
+    var bHas = {}, aHas = {};
+    bc.forEach(function(c){ if(isBadge(c)) bHas[bkey(c)] = 1; });
+    ac.forEach(function(c){ if(isBadge(c)) aHas[bkey(c)] = 1; });
+    var toB = ac.filter(function(c){ return isBadge(c) && c.inTray && !bHas[bkey(c)]; }).map(toTray);
+    var toA = bc.filter(function(c){ return isBadge(c) && c.inTray && !aHas[bkey(c)]; }).map(toTray);
+    var na = {}, nb = {};
+    for(k in a) na[k] = a[k]; for(k in b) nb[k] = b[k];
+    na.cards = ac.concat(toA); nb.cards = bc.concat(toB);
+    return { a: na, aChanged: aChanged || toA.length > 0, b: nb, bChanged: bChanged || toB.length > 0 };
+  }
+  var switching = false;
+  function slide(dir, swap){
+    var el = document.getElementById("zoomWrap");
+    if(!el.animate){ swap(); return; }
+    el.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: "translateX(" + (-dir*8) + "%)", opacity: 0 }], { duration: 140, easing: "ease-in" }).onfinish = function(){
+      swap();
+      el.animate([{ transform: "translateX(" + (dir*8) + "%)", opacity: 0 }, { transform: "translateX(0)", opacity: 1 }], { duration: 180, easing: "ease-out" });
+    };
+  }
+  function switchBoard(){
+    if(switching) return;
+    var from = BOARD_RC ? "rc" : "la", to = BOARD_RC ? "la" : "rc", dir = BOARD_RC ? -1 : 1;
+    if(!isLiveView()){
+      // a date preview/plan isn't the live board: just show the same date on the other board
+      var go = function(){ switching = true; slide(dir, function(){ BOARD_RC = !BOARD_RC; paintBoardChrome(); loadDateView(viewingDate); switching = false; }); };
+      if(hasUnsavedChanges) customConfirm("This plan has unsaved changes. Switch boards and throw them away?").then(function(ok){ if(ok) go(); }); else go();
+      return;
+    }
+    if(!MEM[to].state){ // other board not loaded yet (slow network): fall back to a plain reload
+      try{ sessionStorage.setItem("mdb_pb_keep", getToken() || ""); }catch(e){}
+      location.search = BOARD_RC ? "" : "?board=rc"; return;
+    }
+    switching = true;
+    var mine = currentStateObj();
+    var r = reconcile(mine, MEM[to].state);
+    MEM[to].state = r.b; MEM[to].unsaved = MEM[to].unsaved || r.bChanged;
+    MEM[from].state = r.a; MEM[from].unsaved = hasUnsavedChanges || r.aChanged;
+    slide(dir, function(){
+      BOARD_RC = !BOARD_RC; paintBoardChrome();
+      hasUnsavedChanges = MEM[to].unsaved;
+      applyingRemote = true; renderState(MEM[to].state); applyingRemote = false;
+      try{ localStorage.setItem(STORE_KEY, JSON.stringify(MEM[to].state)); }catch(e){}
+      switching = false;
+    });
+  }
   // identifies "was this update caused by MY last save" so the realtime
   // echo of my own write doesn't trigger a full re-render — comparing full
   // JSON strings doesn't work for this: Postgres's jsonb column doesn't
@@ -2290,22 +2355,33 @@ function initBoard(JOB_ROWS){
     var token = getToken();
     if(!token) return Promise.reject(new Error("locked"));
     var state = currentStateObj();
+    var meKey = BOARD_RC ? "rc" : "la", oth = MEM[BOARD_RC ? "la" : "rc"], both = !!oth.state;
+    if(both){ // keep the shared tray consistent before anything is written
+      var r = reconcile(state, oth.state);
+      oth.state = r.b; oth.unsaved = oth.unsaved || r.bChanged; state = r.a;
+      if(r.aChanged){ applyingRemote = true; renderState(state); applyingRemote = false; }
+    }
     // self-healing: if this save would be too big to even reach the server,
     // shrink every photo automatically and rebuild the payload — Save
     // should never depend on someone remembering a separate cleanup step.
     var prep = JSON.stringify(state).length > SAVE_BUDGET_BYTES
       ? shrinkAllCardPhotos().then(function(){ state = currentStateObj(); })
       : Promise.resolve();
-    return prep.then(function(){ return pushPreparedState(state); });
+    return prep.then(function(){ return pushPreparedState(state, meKey, both); }).then(function(){
+      MEM[meKey].state = state; MEM[meKey].unsaved = false;
+      if(both && oth.unsaved){ // the other board only gets written if it actually changed
+        return pushPreparedState(oth.state, BOARD_RC ? "la" : "rc", true).then(function(){ oth.unsaved = false; });
+      }
+    });
   }
-  function pushPreparedState(state){
+  function pushPreparedState(state, board, noSync){
     state.saveId = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    lastPushedSaveId = state.saveId;
+    lastPushedSaveId = state.saveId; pushedIds[state.saveId] = 1;
     var token = getToken();
     return fetch("/api/save-board", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({ data: state, board: BOARD_RC ? "rc" : "la" })
+      body: JSON.stringify({ data: state, board: board, sync: noSync ? false : undefined })
     }).then(function(r){
       if(r.status === 401){
         // token expired or was revoked — force re-lock so this device
@@ -2350,6 +2426,9 @@ function initBoard(JOB_ROWS){
       }
       hasUnsavedChanges = false;
       pendingRemoteState = null;
+      var meK = BOARD_RC ? "rc" : "la", otK = BOARD_RC ? "la" : "rc";
+      MEM[meK] = { state: res.data && res.data.data || null, unsaved: false };
+      if(!MEM[otK].unsaved) sb.from("board_state").select("data").eq("id", BOARD_RC ? 1 : 2).single().then(function(o){ if(o.data && !MEM[otK].unsaved) MEM[otK].state = o.data.data; });
       if(!realtimeSubscribed){
         subscribeRealtime();
         realtimeSubscribed = true;
@@ -2390,8 +2469,13 @@ function initBoard(JOB_ROWS){
   function subscribeRealtime(){
     sb.channel("board_state_changes")
       .on("postgres_changes", { event:"UPDATE", schema:"public", table:"board_state" }, function(payload){
-        if(payload.new.id !== BOARD_ID) return;
-        if(payload.new.data && payload.new.data.saveId && payload.new.data.saveId === lastPushedSaveId) return;
+        var d = payload.new.data;
+        if(d && d.saveId && pushedIds[d.saveId]) return;
+        if(payload.new.id !== BOARD_ID){ // the board that's off screen: keep its memory current unless it holds unsaved edits
+          var ok = BOARD_RC ? "la" : "rc";
+          if(!MEM[ok].unsaved) MEM[ok].state = d;
+          return;
+        }
         latestRemoteData = payload.new.data;
         if(realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
         realtimeDebounceTimer = setTimeout(function(){
