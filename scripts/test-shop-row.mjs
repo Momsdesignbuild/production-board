@@ -65,3 +65,8 @@ assert.ok(shared.data.cards.some((c) => c.label === "Justin" && c.inTray), "miss
 assert.ok(!shared.data.cards.some((c) => c.label === "note"), "text cards stay per board");
 assert.equal(shareBadges({ cards: [bc("Kegan", true)] }, { cards: [bc("Kegan", false, "job2")] }).changed, 0, "A's tray never evicts B");
 console.log("share badges test OK");
+
+import { fillTray } from "../lib/share.js";
+const ft = fillTray({ cards: [bc("Kegan", true), bc("Rose", false, "job1"), { type: "t", label: "n" }] }, { cards: [bc("Kegan", false, "job0")] });
+assert.deepEqual(ft.data.cards.map((c) => c.label + ":" + c.inTray), ["Kegan:false", "Rose:true"], "own placement kept; missing badge arrives as tray");
+console.log("fill tray test OK");

@@ -1,6 +1,6 @@
 import { todayStr } from "../lib/today.js";
 import { boardOf } from "../lib/boards.js";
-import { shareBadges } from "../lib/share.js";
+import { shareBadges, fillTray } from "../lib/share.js";
 // The only path allowed to write board_state now — the browser used to talk
 // to Supabase directly with the (necessarily public) anon key, which meant
 // anyone who viewed page source could write/delete board data with no auth
@@ -81,7 +81,10 @@ export default async function handler(req, res) {
     const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
     const [o] = await (await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.${otherId}&select=data`, { headers: h })).json();
     const r = o && shareBadges(data, o.data || {});
-    if (r && r.changed) await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.${otherId}`, { method: "PATCH", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify({ data: r.data, updated_at: new Date().toISOString() }) });
+    const patch = async (id, d) => { const w = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.${id}`, { method: "PATCH", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify({ data: d, updated_at: new Date().toISOString() }) }); if (!w.ok) console.error("badge sync write failed", id, w.status); };
+    if (r && r.changed) await patch(otherId, r.data);
+    const f = o && fillTray(o.data || {}, data);
+    if (f && f.changed) await patch(boardId, { ...f.data, saveId: "srv" + Date.now().toString(36) }); // new saveId so the saving tab applies it
   } catch (e) { /* the save itself already succeeded */ }
 
   // best-effort: mirror today's live save into board_history so the
