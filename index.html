@@ -2018,8 +2018,6 @@ function initBoard(JOB_ROWS){
       document.documentElement.requestFullscreen().catch(function(){});
     }
   }
-  function tryFullscreen(){ if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){}); } // iOS Safari has no Fullscreen API on elements
-
   // ---- board fits the screen by default; a custom pinch gesture layers a
   // user-controlled zoom/pan on top. This is NOT the browser's native pinch
   // zoom (that's disabled everywhere — see the viewport meta tag — because
