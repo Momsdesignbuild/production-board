@@ -1,4 +1,5 @@
 import { todayStr } from "../lib/today.js";
+import { boardOf } from "../lib/boards.js";
 // The only path allowed to write board_state now — the browser used to talk
 // to Supabase directly with the (necessarily public) anon key, which meant
 // anyone who viewed page source could write/delete board data with no auth

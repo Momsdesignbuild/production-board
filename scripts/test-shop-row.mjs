@@ -47,3 +47,11 @@ assert.deepEqual(rb.unmatched, ["Gone"]);
 assert.equal(rb.data.jobs[1].bid, "9:00");
 assert.deepEqual(rb.data.cards, [1]);
 console.log("budget refresh test OK");
+
+// every endpoint that calls boardOf must import it (a missing import 500d every save 10/21-22)
+import fs from "node:fs";
+for (const f of fs.readdirSync("api").filter((x) => x.endsWith(".js"))) {
+  const src = fs.readFileSync("api/" + f, "utf8");
+  if (/boardOf\(/.test(src)) assert.match(src, /import \{[^}]*boardOf[^}]*\} from/, f + " uses boardOf without importing it");
+}
+console.log("boardOf import test OK");
