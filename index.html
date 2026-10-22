@@ -549,15 +549,6 @@
 
 </div>
 
-<div class="modalOverlay" id="fsPrompt">
-  <div class="modal" style="cursor:pointer;" id="fsPromptInner">
-    <h3>⛶ Enter Full Screen</h3>
-    <div class="hint" style="margin-bottom:16px;">Hides the address bar and tabs — best for the TV.<br>Tap anywhere here to start.</div>
-    <button class="primary" id="fsPromptBtn">Enter Full Screen</button>
-    <button id="fsPromptSkip">Skip for now</button>
-  </div>
-</div>
-
 <button id="devModeBtn" title="Unlock editing">🔒</button>
 <button id="exitFsBtn" title="Exit full screen">⛶</button>
 
@@ -1081,9 +1072,6 @@ function initBoard(JOB_ROWS){
   // even on a device that was unlocked a moment ago. No auto-unlock from a
   // saved token.
   (function initLock(){
-    var keep = ""; // a board switch hands its unlock to the next page load (sessionStorage, one use)
-    try{ keep = sessionStorage.getItem("mdb_pb_keep") || ""; sessionStorage.removeItem("mdb_pb_keep"); }catch(e){}
-    if(keep){ setToken(keep); setUnlocked(true); return; }
     setUnlocked(false);
   })();
 
@@ -2020,7 +2008,6 @@ function initBoard(JOB_ROWS){
     });
   });
 
-  var fsPrompt = document.getElementById("fsPrompt");
   // iOS Safari doesn't support the Fullscreen API on arbitrary elements at
   // all — document.documentElement.requestFullscreen is simply undefined
   // there, so calling it throws synchronously (before .catch() can even
@@ -2031,19 +2018,7 @@ function initBoard(JOB_ROWS){
       document.documentElement.requestFullscreen().catch(function(){});
     }
   }
-  document.getElementById("fsPromptBtn").addEventListener("click", function(ev){
-    ev.stopPropagation();
-    tryFullscreen();
-    fsPrompt.classList.remove("show");
-  });
-  document.getElementById("fsPromptSkip").addEventListener("click", function(ev){
-    ev.stopPropagation();
-    fsPrompt.classList.remove("show");
-  });
-  document.getElementById("fsPromptInner").addEventListener("click", function(){
-    tryFullscreen();
-    fsPrompt.classList.remove("show");
-  });
+  function tryFullscreen(){ if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){}); } // iOS Safari has no Fullscreen API on elements
 
   // ---- board fits the screen by default; a custom pinch gesture layers a
   // user-controlled zoom/pan on top. This is NOT the browser's native pinch
@@ -2229,7 +2204,6 @@ function initBoard(JOB_ROWS){
   // preserve key order, so the echoed data almost never string-matches
   // what was sent, even though it's the exact same write. A random id
   // tagged onto the save and compared on its own sidesteps that entirely.
-  var lastPushedSaveId = null;
   // see pushPreparedState's success handler — a hard time-window backstop
   // so this device can never blank itself right after its own successful
   // save, even if a realtime echo somehow isn't recognized by saveId.
@@ -2380,7 +2354,7 @@ function initBoard(JOB_ROWS){
   }
   function pushPreparedState(state, board, noSync){
     state.saveId = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    lastPushedSaveId = state.saveId; pushedIds[state.saveId] = 1;
+    pushedIds[state.saveId] = 1;
     var token = getToken();
     return fetch("/api/save-board", {
       method: "POST",
