@@ -765,7 +765,7 @@ function initBoard(JOB_ROWS){
   document.getElementById("boardName").textContent = BOARD_RC ? "· R&C" : "· LA";
   var boardSwitchBtn = document.getElementById("boardSwitchBtn");
   boardSwitchBtn.textContent = BOARD_RC ? "◀ LA" : "R&C ▶";
-  boardSwitchBtn.addEventListener("click", function(){ location.search = BOARD_RC ? "" : "?board=rc"; }); // unsaved edits stay cached per board
+  boardSwitchBtn.addEventListener("click", function(){ try{ sessionStorage.setItem("mdb_pb_keep", getToken() || ""); }catch(e){} /* carry the unlock across the reload */ location.search = BOARD_RC ? "" : "?board=rc"; }); // unsaved edits stay cached per board
 
   // blocks the browser's native pull-to-refresh. CSS overscroll-behavior
   // (set on html/body) doesn't reliably stop this on every mobile browser
@@ -1076,6 +1076,9 @@ function initBoard(JOB_ROWS){
   // even on a device that was unlocked a moment ago. No auto-unlock from a
   // saved token.
   (function initLock(){
+    var keep = ""; // a board switch hands its unlock to the next page load (sessionStorage, one use)
+    try{ keep = sessionStorage.getItem("mdb_pb_keep") || ""; sessionStorage.removeItem("mdb_pb_keep"); }catch(e){}
+    if(keep){ setToken(keep); setUnlocked(true); return; }
     setUnlocked(false);
     document.getElementById("fsPrompt").classList.add("show");
   })();
