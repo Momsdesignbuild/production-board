@@ -75,13 +75,17 @@ export default async function handler(req, res) {
           const m = /^(-?)(\d+):(\d{2})$/.exec((c || "").toString().trim());
           return m ? (m[1] ? -1 : 1) * (+m[2] + +m[3] / 60) : null;
         };
+        // Balance (col I) can show a % when the sheet's Hours/% switch is on,
+        // so derive hours left from Bid and Actual instead of reading col I.
+        const bid = hrs(row[6]);
+        const act = hrs(row[7]);
         jobs.push({
           section: currentSection,
           status: status,
           job: job,
-          bid: hrs(row[6]),
-          act: hrs(row[7]),
-          left: hrs(row[8]),
+          bid: bid,
+          act: act,
+          left: bid !== null && act !== null ? bid - act : null,
         });
       }
     }
