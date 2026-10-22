@@ -56,17 +56,17 @@ for (const f of fs.readdirSync("api").filter((x) => x.endsWith(".js"))) {
 }
 console.log("boardOf import test OK");
 
-// one badge, one board
-import { shareBadges } from "../lib/share.js";
+// one badge, one board, one shared tray
+import { reconcile } from "../lib/share.js";
 const bc = (label, inTray, laneId) => ({ type: "p", category: "employee", label, inTray, laneId: inTray ? null : laneId, x: inTray ? null : "1px", y: inTray ? null : "1px" });
-const shared = shareBadges({ cards: [bc("Kegan", false, "job0"), bc("Justin", true), { type: "t", label: "note" }] }, { cards: [bc("Kegan", false, "job2"), { type: "t", label: "other note" }] });
-assert.equal(shared.data.cards[0].inTray, true, "placed on A -> tray on B");
-assert.ok(shared.data.cards.some((c) => c.label === "Justin" && c.inTray), "missing badge appears in B's tray");
-assert.ok(!shared.data.cards.some((c) => c.label === "note"), "text cards stay per board");
-assert.equal(shareBadges({ cards: [bc("Kegan", true)] }, { cards: [bc("Kegan", false, "job2")] }).changed, 0, "A's tray never evicts B");
+const labels = (d) => d.cards.map((c) => c.label + (c.inTray ? ":tray" : ":placed")).sort();
+// A placed Kegan; B has him in its tray, has Rose placed, A lacks Rose; A has a note
+let r = reconcile({ cards: [bc("Kegan", false, "job0"), bc("Justin", true), { type: "t", label: "note" }] }, { cards: [bc("Kegan", true), bc("Rose", false, "job2"), bc("Max", true)] });
+assert.deepEqual(labels(r.b), ["Justin:tray", "Max:tray", "Rose:placed"], "B: A's placed badge gone, A's tray badge arrives, own placement kept, text card stays on A");
+assert.deepEqual(labels(r.a), ["Justin:tray", "Kegan:placed", "Max:tray", "note:placed"], "A: gets B's tray badge, keeps what it placed");
+assert.ok(r.a.cards.every((c) => c.label !== "Rose"), "Rose is placed on B so it is not in A's tray");
+assert.equal(r.a.cards.filter((c) => c.label === "Justin").length, 1);
+// both trays end up identical
+const trays = (d) => d.cards.filter((c) => c.type !== "t" && c.inTray).map((c) => c.label).sort().join();
+assert.equal(trays(r.a), trays(r.b), "shared tray");
 console.log("share badges test OK");
-
-import { fillTray } from "../lib/share.js";
-const ft = fillTray({ cards: [bc("Kegan", true), bc("Rose", false, "job1"), { type: "t", label: "n" }] }, { cards: [bc("Kegan", false, "job0")] });
-assert.deepEqual(ft.data.cards.map((c) => c.label + ":" + c.inTray), ["Kegan:false", "Rose:true"], "own placement kept; missing badge arrives as tray");
-console.log("fill tray test OK");
