@@ -69,7 +69,6 @@ export default async function handler(req, res) {
       body: JSON.stringify({ data, updated_at: new Date().toISOString() }),
     });
     if (!resp.ok) throw new Error(`board_state write failed: ${resp.status}`);
-    res.status(200).json({ ok: true });
   } catch (err) {
     res.status(502).json({ error: err.message });
     return;
@@ -105,4 +104,6 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error("board_history snapshot failed (non-fatal):", err.message);
   }
+  // respond last: a serverless function can be frozen once the response is sent, which silently skipped the badge sync
+  res.status(200).json({ ok: true });
 }
