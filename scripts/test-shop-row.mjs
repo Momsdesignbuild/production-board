@@ -34,3 +34,16 @@ const withGroup = buildSpec(pagh, crew, undefined);
 assert.deepEqual(withGroup.spec[0].members.slice().sort(), [a, "Julio, Ernesto & Hugo"].sort(), "group badge counts as a member");
 assert.deepEqual(withGroup.dropped, ["Some Stranger (Pagh)"], "unknown reported once; ignore-list badge is not");
 console.log("dropped-badge test OK");
+
+// morning budget refresh: match by name, section-first, keep unmatched, never touch Shop/blank
+import { refreshBudgets, formatHM } from "../lib/budgets.js";
+assert.equal(formatHM(-569.5), "-569:30");
+const rb = refreshBudgets(
+  { cards: [1], jobs: [{ name: "Jahnz  Interior Basement", bid: "1:00", act: "2:00", left: "3:00" }, { name: "Gone", bid: "9:00", act: "", left: "" }, { name: "Shop" }, {}] },
+  [{ section: "LANDSCAPING", job: "Jahnz Interior Basement", bid: 1, act: 1, left: 0 }, { section: "R&C", job: "jahnz interior basement", bid: 795, act: 1364.5, left: -569.5 }],
+  "R&C");
+assert.deepEqual([rb.data.jobs[0].bid, rb.data.jobs[0].act, rb.data.jobs[0].left], ["795:00", "1364:30", "-569:30"]);
+assert.deepEqual(rb.unmatched, ["Gone"]);
+assert.equal(rb.data.jobs[1].bid, "9:00");
+assert.deepEqual(rb.data.cards, [1]);
+console.log("budget refresh test OK");
