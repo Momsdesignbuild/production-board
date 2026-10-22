@@ -549,7 +549,7 @@
 
 </div>
 
-<div class="modalOverlay show" id="fsPrompt">
+<div class="modalOverlay" id="fsPrompt">
   <div class="modal" style="cursor:pointer;" id="fsPromptInner">
     <h3>⛶ Enter Full Screen</h3>
     <div class="hint" style="margin-bottom:16px;">Hides the address bar and tabs — best for the TV.<br>Tap anywhere here to start.</div>
@@ -1053,7 +1053,6 @@ function initBoard(JOB_ROWS){
   function claimDevice(){
     setUnlocked(true);
     closePinModal();
-    document.getElementById("fsPrompt").classList.add("show");
   }
 
   function setUnlocked(v){
@@ -1080,7 +1079,6 @@ function initBoard(JOB_ROWS){
     try{ keep = sessionStorage.getItem("mdb_pb_keep") || ""; sessionStorage.removeItem("mdb_pb_keep"); }catch(e){}
     if(keep){ setToken(keep); setUnlocked(true); return; }
     setUnlocked(false);
-    document.getElementById("fsPrompt").classList.add("show");
   })();
 
   // ---- color wheel (legacy, feeds currentColor default) ----
