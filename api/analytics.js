@@ -9,8 +9,9 @@ import { verifySession } from "../lib/session.js";
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://lufrguiekfkhtxsgcqjo.supabase.co";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SLACK_TOKEN = process.env.SLACK_BOT_TOKEN || "";
-const SLACK_CHANNEL = process.env.CREW_SLACK_CHANNEL || ""; // channel id; #mdb-bot-dev while testing. Never typed in the UI.
-const SLACK_LABEL = process.env.CREW_SLACK_LABEL || "Slack";
+// channel id per crew (CREW_SLACK_CHANNEL_TRENCH / _HAMMER); falls back to CREW_SLACK_CHANNEL (#mdb-bot-dev while testing). Never typed in the UI.
+const slackChannel = (board) => process.env[`CREW_SLACK_CHANNEL_${board.toUpperCase()}`] || process.env.CREW_SLACK_CHANNEL || "";
+const slackLabel = (board) => process.env[`CREW_SLACK_LABEL_${board.toUpperCase()}`] || process.env.CREW_SLACK_LABEL || "Slack";
 
 async function liveState(boardId = 1) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/board_state?id=eq.${boardId}&select=data`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
@@ -43,13 +44,14 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       const shop = req.query.shop === undefined ? undefined : String(req.query.shop).split(",").filter(Boolean);
       const { spec, candidates, receipt, shop: chosen, punches, dropped } = await build(shop);
-      res.status(200).json({ html: renderHtml(spec, crew.cfg, (p) => p, { fragment: true }), candidates, shop: chosen, receipt, punches: punches ?? null, dropped: dropped || [], recipient: SLACK_CHANNEL ? SLACK_LABEL : null, groups: spec.map((g) => ({ name: g.name, color: g.color, members: g.members })), fileName: `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}` });
+      res.status(200).json({ html: renderHtml(spec, crew.cfg, (p) => p, { fragment: true }), candidates, shop: chosen, receipt, punches: punches ?? null, dropped: dropped || [], recipient: slackChannel(board) ? slackLabel(board) : null, groups: spec.map((g) => ({ name: g.name, color: g.color, members: g.members })), fileName: `${crew.cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}` });
       return;
     }
 
     if (req.method === "POST") {
       if (!verifySession(req.headers.authorization, process.env.SESSION_SECRET)) { res.status(401).json({ error: "unauthorized" }); return; }
       const { png, shop } = req.body || {};
+      const SLACK_CHANNEL = slackChannel(board);
       if (!SLACK_TOKEN || !SLACK_CHANNEL) { res.status(500).json({ error: "server isn't configured (SLACK_BOT_TOKEN / CREW_SLACK_CHANNEL)" }); return; }
       const b64 = String(png || "").replace(/^data:image\/png;base64,/, "");
       if (b64.length < 1000) { res.status(400).json({ error: "missing png" }); return; }
@@ -61,7 +63,7 @@ export default async function handler(req, res) {
       const put = await fetch(up.upload_url, { method: "POST", headers: { "Content-Type": "image/png" }, body: bytes });
       if (!put.ok) throw new Error(`slack upload ${put.status}`);
       await slack("files.completeUploadExternal", { files: [{ id: up.file_id, title: name }], channel_id: SLACK_CHANNEL, initial_comment: `${name} — ${dateLine()}\n${lines}${dropped?.length ? `\n:warning: Not counted (not on the roster): ${dropped.join(", ")}` : ""}` });
-      const to = SLACK_LABEL;
+      const to = slackLabel(board);
       res.status(200).json({ ok: true, to, name });
       return;
     }
