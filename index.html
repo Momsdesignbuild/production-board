@@ -889,11 +889,9 @@ function initBoard(JOB_ROWS){
   // ---- build job rows ----
   var laneEls = {};
   var balInputs = []; // [{bid,act,left}] per row index
-  var rowEls = []; // the whole job row (name square + lane) per row index
   JOB_ROWS.forEach(function(job, idx){
     var row = document.createElement("div");
     row.className = "jobRow";
-    rowEls[idx] = row;
     if(job.shop) row.dataset.shop = "1"; // template flag: this row is the fixed Shop row, not a job slot
 
     var nameCell = document.createElement("div");
@@ -2224,10 +2222,13 @@ function initBoard(JOB_ROWS){
   function computeRowIdx(el){
     var r = el.getBoundingClientRect();
     var cx = r.left + r.width/2, cy = r.top + r.height/2;
-    for(var i = 0; i < rowEls.length; i++){
-      if(!rowEls[i]) continue;
-      var rr = rowEls[i].getBoundingClientRect();
-      if(cx >= rr.left && cx <= rr.right && cy >= rr.top && cy <= rr.bottom) return i;
+    for(var i = 0; i < balInputs.length; i++){
+      // the .jobRow wrapper has no box of its own (display:contents), so use the name square + badge lane together
+      var ne = balInputs[i] && balInputs[i].nameCell, le = laneEls["job"+i];
+      if(!ne || !le) continue;
+      var n1 = ne.getBoundingClientRect(), l1 = le.getBoundingClientRect();
+      var left = Math.min(n1.left, l1.left), right = Math.max(n1.right, l1.right), top = Math.min(n1.top, l1.top), bottom = Math.max(n1.bottom, l1.bottom);
+      if(cx >= left && cx <= right && cy >= top && cy <= bottom) return i;
     }
     return null;
   }
