@@ -889,9 +889,11 @@ function initBoard(JOB_ROWS){
   // ---- build job rows ----
   var laneEls = {};
   var balInputs = []; // [{bid,act,left}] per row index
+  var rowEls = []; // the whole job row (name square + lane) per row index
   JOB_ROWS.forEach(function(job, idx){
     var row = document.createElement("div");
     row.className = "jobRow";
+    rowEls[idx] = row;
     if(job.shop) row.dataset.shop = "1"; // template flag: this row is the fixed Shop row, not a job slot
 
     var nameCell = document.createElement("div");
@@ -2218,6 +2220,18 @@ function initBoard(JOB_ROWS){
   // the grid's fr-columns only resolve to real pixels once rendered.
   // This is what makes "how long has this dumpster been on job X"
   // answerable at all; see api/analytics.js.
+  // which job row a card's centre sits in, name square included (a text card dropped on the left name square has no laneId)
+  function computeRowIdx(el){
+    var r = el.getBoundingClientRect();
+    var cx = r.left + r.width/2, cy = r.top + r.height/2;
+    for(var i = 0; i < rowEls.length; i++){
+      if(!rowEls[i]) continue;
+      var rr = rowEls[i].getBoundingClientRect();
+      if(cx >= rr.left && cx <= rr.right && cy >= rr.top && cy <= rr.bottom) return i;
+    }
+    return null;
+  }
+
   function computeLaneId(el){
     var r = el.getBoundingClientRect();
     var cx = r.left + r.width/2, cy = r.top + r.height/2;
@@ -2243,7 +2257,8 @@ function initBoard(JOB_ROWS){
         scale: parseFloat(el.dataset.scale)||1,
         hideBar: el.dataset.hideBar==="1",
         inTray: false,
-        laneId: computeLaneId(el)
+        laneId: computeLaneId(el),
+        rowIdx: el.dataset.type === "t" ? computeRowIdx(el) : null
       };
     });
     var trayCards = Array.prototype.map.call(trayGrid.querySelectorAll(".card"), function(el){

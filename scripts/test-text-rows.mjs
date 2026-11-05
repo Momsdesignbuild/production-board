@@ -13,4 +13,7 @@ assert.equal(r.spec[0].name, "Jahnz Interior Basement");
 // text elsewhere (no lane) does nothing; empty row still falls back to Row N
 r = buildSpec({ jobs: [{ name: "" }], cards: [badge(a, "job0"), txt("floating", null), { ...txt("in tray", "job0"), inTray: true }] }, crew);
 assert.equal(r.spec[0].name, "Row 1");
+// text dropped on the name square has no laneId but a rowIdx
+r = buildSpec({ jobs: [{ name: "" }, { name: "" }], cards: [badge(a, "job1"), { type: "t", label: "FG Work Order", laneId: null, rowIdx: 1, inTray: false }] }, crew);
+assert.equal(r.spec[0].name, "FG Work Order");
 console.log("text rows test OK");
