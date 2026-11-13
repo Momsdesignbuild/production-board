@@ -1,10 +1,27 @@
 {
   "rewrites": [
-    { "source": "/temp", "destination": "/temp.html" }
+    {
+      "source": "/temp",
+      "destination": "/temp.html"
+    },
+    {
+      "source": "/LT-logs",
+      "destination": "/logs.html"
+    },
+    {
+      "source": "/lt-logs",
+      "destination": "/logs.html"
+    }
   ],
   "functions": {
-    "api/assets.js": { "maxDuration": 45 },
-    "api/migrate-photos.js": { "maxDuration": 60 },
-    "api/recover-photos.js": { "maxDuration": 60 }
+    "api/assets.js": {
+      "maxDuration": 45
+    },
+    "api/migrate-photos.js": {
+      "maxDuration": 60
+    },
+    "api/recover-photos.js": {
+      "maxDuration": 60
+    }
   }
 }

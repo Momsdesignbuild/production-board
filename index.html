@@ -471,6 +471,8 @@
   #logsBar{ display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
   .logsTab{ width:auto; margin:0; padding:7px 14px; border-radius:8px; font-size:13px; font-weight:700; background:var(--panel2); border:1px solid var(--line); color:var(--text); }
   .logsTab.active{ background:var(--accent); border-color:var(--accent); color:#08131c; }
+  .logsNav{ width:auto; margin:0; padding:7px 12px; border-radius:8px; font-size:13px; font-weight:700; background:var(--panel2); border:1px solid var(--line); color:var(--text); }
+  #logsFull{ font-size:12px; color:var(--accent); text-decoration:none; margin-left:6px; }
   #logsDate{ margin-left:auto; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:13px; padding:6px 10px; }
   #logsConsole{ flex:1; min-height:0; overflow-y:auto; background:#0b0f14; border:1px solid var(--line); border-radius:10px; padding:12px 14px; font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#cfd8e3; }
   #logsConsole .ln{ white-space:pre-wrap; word-break:break-word; }
@@ -745,7 +747,7 @@
   <div class="modal" id="logsModal">
     <button id="logsCloseBtn" title="Close">✕</button>
     <h3>📜 Crew Logs</h3>
-    <div id="logsBar"><button class="logsTab active" data-crew="trench">🚜 Trench Logs</button><button class="logsTab" data-crew="hammer">🔨 Hammer Logs</button><select id="logsDate"></select></div>
+    <div id="logsBar"><button class="logsTab active" data-crew="trench">🚜 Trench Logs</button><button class="logsTab" data-crew="hammer">🔨 Hammer Logs</button><button class="logsNav" id="logsTopBtn">⬆ Top</button><button class="logsNav" id="logsEndBtn">⬇ Latest</button><a id="logsFull" href="/LT-logs" target="_blank" rel="noopener">Open full page ↗</a><select id="logsDate"></select></div>
     <div id="logsConsole">Loading…</div>
     <div id="logsFoot"></div>
   </div>
@@ -798,6 +800,8 @@ function initBoard(JOB_ROWS){
   document.addEventListener("touchmove", function(e){
     if(e.touches.length !== 1) return;
     var touchY = e.touches[0].clientY;
+    // a drag inside a scrollable popup (Logs console, any .modal) is a scroll, not pull-to-refresh: leave it alone
+    if(e.target.closest && e.target.closest("#logsConsole, .modal")){ lastTouchY = touchY; return; }
     var scrollTop = document.scrollingElement ? document.scrollingElement.scrollTop : 0;
     if(scrollTop <= 0 && touchY > lastTouchY){
       e.preventDefault();
@@ -2937,6 +2941,8 @@ function initBoard(JOB_ROWS){
     document.getElementById("logsBtn").addEventListener("click", function(){ if(unlocked) open(); });
     document.getElementById("logsCloseBtn").addEventListener("click", close);
     overlay.addEventListener("click", function(e){ if(e.target === overlay) close(); });
+    document.getElementById("logsTopBtn").addEventListener("click", function(){ box.scrollTop = 0; });
+    document.getElementById("logsEndBtn").addEventListener("click", function(){ box.scrollTop = box.scrollHeight; });
     dateSel.addEventListener("change", function(){ date = dateSel.value; load(false); });
     Array.prototype.forEach.call(document.querySelectorAll(".logsTab"), function(tab){
       tab.addEventListener("click", function(){ crew = tab.dataset.crew; date = ""; Array.prototype.forEach.call(document.querySelectorAll(".logsTab"), function(t){ t.classList.toggle("active", t === tab); }); load(false); });
