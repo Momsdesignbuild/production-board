@@ -1,0 +1,12 @@
+{
+  "_note": "People who never clock into BuilderTrend, kept under a job by hand. Change `job` when they move; delete the entry when the job ends. Names must match crew-map.json / hammer-map.json.",
+  "trench": [
+    {
+      "job": "Pagh",
+      "members": [
+        "Julio, Ernesto & Hugo"
+      ]
+    }
+  ],
+  "hammer": []
+}

@@ -77,6 +77,15 @@ for (const board of ["trench", "hammer"]) {
     picked[n] = { name: n, job: r.jobName, punched_at: r.timeIn + "-06:00" };
   }
   const { spec, receipt } = buildSpecFromPunches(Object.values(picked), { cards }, { cfg, roster: crew.roster }, cfg.pinned[B.shopPerson] ? [B.shopPerson] : []);
+  // fixed groups: not in BuilderTrend, placed by hand (crew/morning-fixed.json); badge photo from the board, name printed under it
+  for (const fg of JSON.parse(fs.readFileSync(path.join(ROOT, "crew", "morning-fixed.json"), "utf8"))[board] || []) {
+    const memb = fg.members.filter((m) => people[m]); if (!memb.length) continue;
+    const cs = memb.map((m) => { const c = cards.find((x) => sameName(x.label, m)); return { ...(c || { label: m, photo: null }), caption: true }; });
+    const crewOf = (m) => Object.entries(crew.roster).find(([, c]) => c.members.includes(m))[0];
+    const g = spec.find((x) => x.name === fg.job), shopAt = spec.findIndex((x) => x.name === "Shop");
+    if (g) { g.members.push(...memb); g.cards.push(...cs); } else spec.splice(shopAt < 0 ? spec.length : shopAt, 0, { name: fg.job, color: crewOf(memb[0]), members: memb, cards: cs });
+    memb.forEach((m) => { picked[m] = picked[m] || { name: m }; receipt.push(`fixed ${m} → ${fg.job} (crew/morning-fixed.json)`); });
+  }
   const missing = Object.keys(people).filter((n) => n !== B.shopPerson && !picked[n]).map((n) => `${n}${seenPunch.has(n) ? " (shop/other)" : ""}`);
   const html = renderHtml(spec, cfg, photoSrc);
   const name = `${cfg.title.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase())} ${fileDate()}`;
