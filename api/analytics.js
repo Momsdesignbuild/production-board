@@ -5,6 +5,7 @@
 import { computeAnalytics } from "../lib/analytics.js";
 import { buildSpec, loadCrewConfig, renderHtml, dateLine, fileDate } from "../lib/crew-board.js";
 import { verifySession } from "../lib/session.js";
+import { todayStr } from "../lib/today.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://lufrguiekfkhtxsgcqjo.supabase.co";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -33,6 +34,17 @@ async function slack(method, body) {
 export default async function handler(req, res) {
   if (!SERVICE_KEY) { res.status(500).json({ error: "server isn't configured (SUPABASE_SERVICE_ROLE_KEY)" }); return; }
   try {
+    // Logs popup: BuilderTrend shifts for one crew's roster (crew_log, filled by the mini's punch-log job). Reads are open like the rest of the board.
+    if (req.method === "GET" && req.query?.log) {
+      const crewKey = String(req.query.log);
+      if (crewKey !== "trench" && crewKey !== "hammer") { res.status(400).json({ error: "log must be trench or hammer" }); return; }
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || "")) ? String(req.query.date) : todayStr();
+      const H = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+      const get = async (q) => { const r = await fetch(`${SUPABASE_URL}/rest/v1/crew_log?crew=eq.${crewKey}&${q}`, { headers: H }); const j = await r.json(); if (!Array.isArray(j)) throw new Error("crew_log read failed"); return j; };
+      const [rows, dts] = await Promise.all([get(`date=eq.${date}&select=name,job,time_in,time_out&order=time_in.asc`), get("select=date&order=date.desc&limit=2000")]);
+      res.status(200).json({ date, dates: [...new Set(dts.map((d) => d.date))], rows });
+      return;
+    }
     if (req.method === "GET" && !req.query?.crew) { res.status(200).json(await computeAnalytics(SUPABASE_URL, SERVICE_KEY)); return; }
 
     const board = String(req.query?.crew || req.body?.crew || "trench");

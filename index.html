@@ -331,7 +331,7 @@
   }
   #traySearchInput::placeholder{ color:var(--muted); }
   #addBadgeBtn{ margin-left:auto; }
-  #instructionsBtn, #trenchBtn, #loadBoardBtn, #saveBoardBtn{
+  #instructionsBtn, #trenchBtn, #logsBtn, #loadBoardBtn, #saveBoardBtn{
     width:auto; margin:0; padding:4px 10px; font-size:12px; border-radius:8px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text); font-weight:600;
     vertical-align:middle;
@@ -339,7 +339,7 @@
   #saveBoardBtn{ background:var(--accent); border-color:var(--accent); color:#08131c; }
   #loadBoardBtn:disabled, #saveBoardBtn:disabled{ opacity:0.6; }
   body:not(.unlocked) #saveBoardBtn{ display:none; }
-  body:not(.unlocked) #instructionsBtn, body:not(.unlocked) #trenchBtn{ display:none; }
+  body:not(.unlocked) #instructionsBtn, body:not(.unlocked) #trenchBtn, body:not(.unlocked) #logsBtn{ display:none; }
   #addBadgeBtn{ width:auto; margin:0; padding:7px 14px; font-size:12px; border-radius:8px; background:var(--accent); border-color:var(--accent); color:#08131c; font-weight:700; }
   #trayGridRow{ display:flex; align-items:stretch; gap:10px; flex:1; min-height:0; }
   #trayGrid{
@@ -466,6 +466,18 @@
   .modal{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px; width:320px; text-align:center; max-height:80vh; overflow-y:auto; }
   .modal h3{ margin:0 0 16px 0; font-size:18px; }
   #trenchModal{ width:min(960px, 94vw); text-align:left; }
+  #logsModal{ width:80vw; height:80vh; max-height:80vh; text-align:left; display:flex; flex-direction:column; padding:20px 24px; position:relative; overflow:hidden; }
+  #logsModal h3{ margin:0 0 10px; }
+  #logsBar{ display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+  .logsTab{ width:auto; margin:0; padding:7px 14px; border-radius:8px; font-size:13px; font-weight:700; background:var(--panel2); border:1px solid var(--line); color:var(--text); }
+  .logsTab.active{ background:var(--accent); border-color:var(--accent); color:#08131c; }
+  #logsDate{ margin-left:auto; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:13px; padding:6px 10px; }
+  #logsConsole{ flex:1; min-height:0; overflow-y:auto; background:#0b0f14; border:1px solid var(--line); border-radius:10px; padding:12px 14px; font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#cfd8e3; }
+  #logsConsole .ln{ white-space:pre-wrap; word-break:break-word; }
+  #logsConsole .t{ color:#6b7a8c; } #logsConsole .who{ color:#fff; font-weight:700; }
+  #logsConsole .in{ color:#4ade80; } #logsConsole .out{ color:#fbbf24; } #logsConsole .mv{ color:#38bdf8; }
+  #logsFoot{ margin-top:8px; font-size:11px; color:var(--muted); }
+  #logsCloseBtn{ position:absolute; top:10px; right:10px; width:28px; height:28px; padding:0; margin:0; border-radius:50%; font-size:13px; line-height:1; background:var(--panel2); }
   #instructionsModal{ width:min(720px, 94vw); }
   #instructionsModal iframe{ width:100%; aspect-ratio:16/9; border:0; border-radius:8px; display:block; margin-bottom:14px; }
   #trenchTabs{ display:flex; gap:6px; margin-bottom:10px; }
@@ -498,7 +510,7 @@
 <div id="app">
 
   <div id="boardWrap">
-    <h1>MDB Production Board <span id="boardName"></span> <span id="clock"></span> <button id="instructionsBtn" title="How to use the board">📖 Instructions</button> <button id="trenchBtn" title="Today's Trench Time (from the board) and Hammer Time (from BuilderTrend punches)">🚜 Trench + Hammer Time</button> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button> <button id="calendarBtn" title="View history or plan a future day">📅 Calendar</button> <button id="analyticsBtn" title="How long has each badge been on its current job">📊 Analytics</button> <button id="boardSwitchBtn" title="Switch between the LA and R&C boards"></button></h1>
+    <h1>MDB Production Board <span id="boardName"></span> <span id="clock"></span> <button id="instructionsBtn" title="How to use the board">📖 Instructions</button> <button id="trenchBtn" title="Today's Trench Time (LA board) and Hammer Time (R&C board)">🚜 Trench + Hammer Time</button> <button id="loadBoardBtn" title="Pull the latest saved board and stay live from here on">⬇️ Load</button> <button id="saveBoardBtn">💾 Save</button> <button id="calendarBtn" title="View history or plan a future day">📅 Calendar</button> <button id="analyticsBtn" title="How long has each badge been on its current job">📊 Analytics</button> <button id="boardSwitchBtn" title="Switch between the LA and R&C boards"></button> <button id="logsBtn" title="BuilderTrend clock-ins, clock-outs and job moves for the Trench and Hammer crews">📜 Logs</button></h1>
     <div id="viewOnlyNotice">Viewing live — editing is locked on this device.</div>
     <div id="dateViewNotice" style="display:none;"></div>
 
@@ -729,6 +741,15 @@
   </div>
 </div>
 <div id="trenchCapture"></div>
+<div class="modalOverlay" id="logsOverlay">
+  <div class="modal" id="logsModal">
+    <button id="logsCloseBtn" title="Close">✕</button>
+    <h3>📜 Crew Logs</h3>
+    <div id="logsBar"><button class="logsTab active" data-crew="trench">🚜 Trench Logs</button><button class="logsTab" data-crew="hammer">🔨 Hammer Logs</button><select id="logsDate"></select></div>
+    <div id="logsConsole">Loading…</div>
+    <div id="logsFoot"></div>
+  </div>
+</div>
 <div class="modalOverlay" id="analyticsOverlay">
   <div class="modal" id="analyticsModal">
     <button id="analyticsCloseBtn" title="Close">✕</button>
@@ -2866,6 +2887,61 @@ function initBoard(JOB_ROWS){
       showToast("Send failed: " + err.message, true);
     });
   });
+
+  // ---------- crew logs ----------
+  (function(){
+    var overlay = document.getElementById("logsOverlay"), box = document.getElementById("logsConsole"), dateSel = document.getElementById("logsDate"), foot = document.getElementById("logsFoot");
+    var crew = "trench", date = "", timer = null;
+    var short = function(j){ if(/^(mom's world|general|fg - shop)/i.test(j)) return "Shop"; return j.split(",")[0].replace(/\s+\d{4}.*$/, "").trim() || j; };
+    var hm = function(s){ return String(s).slice(11, 16); };
+    var mins = function(s){ return Number(String(s).slice(11, 13)) * 60 + Number(String(s).slice(14, 16)); };
+    // shifts -> console events. A clock-out followed within 3 min by a clock-in on another job is ONE move; the same job is just a re-punch (hidden).
+    function events(rows){
+      var by = {}; rows.forEach(function(r){ (by[r.name] = by[r.name] || []).push(r); });
+      var ev = [];
+      Object.keys(by).forEach(function(n){
+        var s = by[n].sort(function(a, b){ return a.time_in < b.time_in ? -1 : 1; });
+        s.forEach(function(r, i){
+          var prev = s[i - 1], next = s[i + 1];
+          var joined = prev && prev.time_out && mins(r.time_in) - mins(prev.time_out) <= 3;
+          if(joined){ if(short(prev.job) !== short(r.job)) ev.push({ t: r.time_in, n: n, k: "mv", txt: short(prev.job) + " → " + short(r.job), full: prev.job + " → " + r.job }); }
+          else ev.push({ t: r.time_in, n: n, k: "in", txt: short(r.job), full: r.job });
+          var nextJoined = next && r.time_out && mins(next.time_in) - mins(r.time_out) <= 3;
+          if(r.time_out && !nextJoined) ev.push({ t: r.time_out, n: n, k: "out", txt: short(r.job), full: r.job });
+        });
+      });
+      return ev.sort(function(a, b){ return a.t < b.t ? -1 : a.t > b.t ? 1 : a.n < b.n ? -1 : 1; });
+    }
+    function line(e){
+      var d = document.createElement("div"); d.className = "ln"; d.title = e.full;
+      var tag = { in: "IN  ", out: "OUT ", mv: "MOVE" }[e.k];
+      [["t", hm(e.t) + "  "], [e.k, tag + "  "], ["who", e.n], ["", "  " + (e.k === "mv" ? "" : "· ") + e.txt]].forEach(function(p){ var sp = document.createElement("span"); if(p[0]) sp.className = p[0]; sp.textContent = p[1]; d.appendChild(sp); });
+      return d;
+    }
+    function load(keepScroll){
+      fetch("/api/analytics?log=" + crew + (date ? "&date=" + date : "")).then(function(r){ return r.json(); }).then(function(res){
+        if(res.error){ box.textContent = "Error: " + res.error; return; }
+        date = res.date;
+        var dates = res.dates.indexOf(res.date) > -1 ? res.dates : [res.date].concat(res.dates);
+        dateSel.textContent = ""; dates.forEach(function(d){ var o = document.createElement("option"); o.value = d; o.textContent = d; if(d === date) o.selected = true; dateSel.appendChild(o); });
+        var atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+        var ev = events(res.rows); box.textContent = "";
+        if(!ev.length){ box.textContent = "No clock activity logged for this day yet."; }
+        ev.forEach(function(e){ box.appendChild(line(e)); });
+        if(!keepScroll || atEnd) box.scrollTop = box.scrollHeight; // newest at the bottom, like a console
+        foot.textContent = res.rows.length + " shifts · BuilderTrend, refreshed every 5 min · " + (crew === "trench" ? "Trench roster" : "Hammer roster");
+      }).catch(function(err){ box.textContent = "Couldn't load the log: " + err.message; });
+    }
+    function open(){ overlay.classList.add("show"); date = ""; load(false); clearInterval(timer); timer = setInterval(function(){ load(true); }, 60000); }
+    function close(){ overlay.classList.remove("show"); clearInterval(timer); }
+    document.getElementById("logsBtn").addEventListener("click", function(){ if(unlocked) open(); });
+    document.getElementById("logsCloseBtn").addEventListener("click", close);
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) close(); });
+    dateSel.addEventListener("change", function(){ date = dateSel.value; load(false); });
+    Array.prototype.forEach.call(document.querySelectorAll(".logsTab"), function(tab){
+      tab.addEventListener("click", function(){ crew = tab.dataset.crew; date = ""; Array.prototype.forEach.call(document.querySelectorAll(".logsTab"), function(t){ t.classList.toggle("active", t === tab); }); load(false); });
+    });
+  })();
 
   // ---------- analytics ----------
   var analyticsOverlay = document.getElementById("analyticsOverlay");
