@@ -87,6 +87,6 @@ for (const board of ["trench", "hammer"]) {
   const buf = await png(html); const out = path.join(os.tmpdir(), `${board}-${DATE}.png`); fs.writeFileSync(out, buf);
   const up = await slack("files.getUploadURLExternal", new URLSearchParams({ filename: `${name}.png`, length: String(buf.length) }));
   const put = await fetch(up.upload_url, { method: "POST", headers: { "Content-Type": "image/png" }, body: buf }); if (!put.ok) throw new Error(`slack upload ${put.status}`);
-  await slack("files.completeUploadExternal", { files: [{ id: up.file_id, title: name }], channel_id: B.channel[CHANNEL], initial_comment: text });
+  await slack("files.completeUploadExternal", { files: [{ id: up.file_id, title: name }], channel_id: B.channel[CHANNEL] }); // card only, no caption (Josh 2026-11-13); the text stays in the console
   console.log(`posted ${name} → ${CHANNEL} (${B.channel[CHANNEL]}), png ${out}`);
 }
